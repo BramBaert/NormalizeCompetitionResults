@@ -240,7 +240,7 @@ def normalizeResultCDF(row, resultKey:str, correctionTable:pd.DataFrame, refCat:
     return round(row[resultKey]*(fromRow[refCat].values[0]/toRow[row['Category']].values[0]),2)
 
 # Import the data
-df = pd.read_csv('data.csv', encoding='iso-8859-1')
+df = pd.read_csv('input_data/BE_national.csv', encoding='iso-8859-1')
 
 # Make the categories uni-sex
 if C_USE_UNISEX:
