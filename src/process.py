@@ -5,8 +5,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from distfit import distfit
 
-C_USE_60_SHOT_NORMALIZED = 0
-C_USE_UNISEX = 0
+C_USE_SHOT_COUNT_NORMALIZED = 1
+C_NORMALIZED_SHOT_COUNT = 30
+C_USE_UNISEX = 1
 
 def calculate_result_reversed(row):
     ''' This function reverses the results starting from the maximum result as 0
@@ -28,7 +29,9 @@ def normalize_shots(row,targetShots=60):
             The 'Results' column normalized to <targetShots>
     '''
     match row['Category']:
-        case "BE":
+        case "DUV":
+            return row['Result']*targetShots/30
+        case "BEN":
             return row['Result']*targetShots/30
         case "CAD":
             return row['Result']*targetShots/40
@@ -130,6 +133,17 @@ def fitLogGammaDist(row):
     '''
     return(scipy.stats.loggamma.fit(row[resultKey]))
 
+def fitGenExtremeDist(row):
+    ''' This function returns the parameters for a Generalized extreme value distribution
+        Input:
+            row:    A row from a dataFrame consisting of at least two columns 'Result'
+                    and 'Result60Shots'. The global variable resultKey will be used to
+                    determine which of the two to select
+        Return:
+            A tuple consisting of the parameter for a beta distribution (c, loc, scale)
+    '''
+    return(scipy.stats.genextreme.fit(row[resultKey]))
+
 def determineCorrection(row,refCat):
     ''' This function returns the Correction factor between categories
         Input:
@@ -149,48 +163,101 @@ def unisex(val):
     Return:
         The uni-sex label
     '''
-    if C_USE_UNISEX:
-        match val:
-            case "D1":
-                return "U1"
-            case "S1":
-                return "U1"
-            case "D2":
-                return "U2"
-            case "S2":
-                return "U2"
-            case "D3":
-                return "U3"
-            case "S3":
-                return "U3"
-            case "JD":
-                return "JUN"
-            case "JH":
-                return "JUN"
-            case _:
-                return val
-    else:
-        return val
 
+    match val:
+        case "D1":
+            return "U1"
+        case "S1":
+            return "U1"
+        case "D2":
+            return "U2"
+        case "S2":
+            return "U2"
+        case "D3":
+            return "U3"
+        case "S3":
+            return "U3"
+        case "JD":
+            return "JUN"
+        case "JH":
+            return "JUN"
+        case _:
+            return val
+    
+def appendStatsFunction(dataFrame:pd.DataFrame,function,name:str="algoName") -> pd.DataFrame:
+    localDf=dataFrame.copy(deep=True)
+    localDf['linSpace'] = localDf[resultKey]
+    localDf['algoVal']  = localDf[resultKey].apply(function)
+    localDf['algoName'] = name
+    if(np.array == type(localDf['algoVal'])):
+        localDf = localDf.explode(['linSpace','algoVal']).reset_index(drop=True)
+    else:
+        localDf = localDf.explode('linSpace').reset_index(drop=True)
+    return localDf
+
+def appendDistFunction(dataFrame:pd.DataFrame,linFunct,AlgoFunc,name:str="algoName") -> pd.DataFrame:
+    localDf=dataFrame.copy(deep=True)
+    localDf['linSpace'] = dfStats.apply(lambda row: linFunct,axis=1)
+    localDf['algoVal']  = dfStats.apply(lambda row: AlgoFunc,axis=1)
+    localDf['algoName'] = name
+    print("Creating an algoVal df with type:{}".format(type(localDf['algoVal'])))
+    if(np.array == type(localDf['algoVal'])):
+        localDf = localDf.explode(['linSpace','algoVal']).reset_index(drop=True)
+    else:
+        localDf = localDf.explode('linSpace').reset_index(drop=True)
+    return localDf
+
+def printLineHistogram(algoData:pd.DataFrame,
+                       lines:list,
+                       title:str="",
+                       yaxis_title:str="",
+                       histnorm:str='probability density'):
+    # Strip the df to the lines we want to print
+    localDf = algoData.loc[algoData["algoName"].isin(lines)]
+    # Create subplots using Plotly Express
+    fig = px.line(localDf, x='linSpace', y='algoVal', color="algoName", facet_col='Category', facet_col_wrap=3,color_discrete_sequence=['red','green','blue'])
+
+    # Update layout
+    fig.update_layout(
+        title=title,
+        xaxis_title='Points',
+        yaxis_title=yaxis_title
+    )
+
+    #fig.print_grid()
+
+    dfStats_exploded_result = dfStats.explode([resultKey]).reset_index(drop=True)
+    categoryCount = len(dfStats['Category'].unique())
+    for count, cat in enumerate(dfStats['Category'].unique()):
+        #rowVal = int((categoryCount-count+3)/3)
+        rowVal = int(categoryCount/3) - int(count/3)
+        if categoryCount%3:
+            rowVal += 1
+        colVal = int(count%3)+1
+        #print("Count {} = Cat {}: row = {} , col = {}".format(count,cat,rowVal,colVal))
+        fig.add_trace(px.histogram(dfStats_exploded_result.loc[dfStats_exploded_result['Category'] == cat],x=resultKey, histnorm=histnorm, nbins=50,opacity=0.5).data[0],row=rowVal,col=colVal)
+    # Show the plot
+    fig.data = fig.data[::-1]
+    fig.show()
 
 # Import the data
 df = pd.read_csv('data.csv', encoding='iso-8859-1')
 
 # Make the categories uni-sex
-df['CategoryGender']    = df['Category']
-df['Category']          = df['Category'].apply(unisex)
+if C_USE_UNISEX:
+    df['Category'] = df['Category'].apply(unisex)
 
 # Normalize all shots to the target number of competition shots TODO make the targetShots a commandline argument
-df['ResultNormalizedShots'] = df.apply(lambda row: normalize_shots(row,60), axis=1)
-df['ResultNormalizedShots'] = df.apply(lambda row: normalize_shots(row,60), axis=1)
+df['ResultNormalizedShots'] = df.apply(lambda row: normalize_shots(row,C_NORMALIZED_SHOT_COUNT), axis=1)
 
 # TODO make this depend on a commandline argument 
-if C_USE_60_SHOT_NORMALIZED: 
+if C_USE_SHOT_COUNT_NORMALIZED: 
     resultKey = 'ResultNormalizedShots'
 else:
     resultKey = 'Result'
 
 #fit_distribution_old("JH")
+#plt.show()
 
 # Run distribution fitting over all categories
 dfFit = pd.DataFrame()
@@ -205,7 +272,7 @@ sum_scores.sort_values(['score'],inplace=True)
 algoSorterList = sum_scores['name'].tolist()
 
 print("The best distribution is {}".format(algoSorterList[0]))
-if "beta" != algoSorterList[0]:
+if "loggamma" != algoSorterList[0]:
     print("Warning: the used distibution algorithm for normalizing the results, isn't the most optimal one.")
 
 # Concatenate sum_scores to the original DataFrame
@@ -219,20 +286,129 @@ fig.show()
 
 # Start creation of the per Category statistics DataFrame
 dfStats = df.groupby(['Category', 'Discipline']).agg({'Result': list, 'ResultNormalizedShots': list}).reset_index()
-
 # Add the different statistics info
-dfStats['Mean']                 = dfStats[resultKey].apply(np.mean)
-dfStats['Median']               = dfStats[resultKey].apply(np.median)
 dfStats['Count']                = dfStats[resultKey].apply(np.count_nonzero)
-dfStats['Max']                  = dfStats[resultKey].apply(max)
-dfStats['Min']                  = dfStats[resultKey].apply(min)
+dfStats['BetaParams']           = dfStats.apply(fitBetaDist, axis=1)
+dfStats['LogGammaParams']       = dfStats.apply(fitLogGammaDist, axis=1)
+dfStats['GenExtremeParams']     = dfStats.apply(fitGenExtremeDist, axis=1)
+
+# Add the different statistical parameters
+dfAlgo = appendStatsFunction(dfStats,np.mean,"Mean")
+dfAlgo = pd.concat([dfAlgo,appendStatsFunction(dfStats,np.median,"Median")], ignore_index=True)
+dfAlgo = pd.concat([dfAlgo,appendStatsFunction(dfStats,np.max,"Max")], ignore_index=True)
+dfAlgo = pd.concat([dfAlgo,appendStatsFunction(dfStats,np.min,"Min")], ignore_index=True)
+
+# Add the Beta function
+dfSingleDist=dfStats.copy(deep=True)
+dfSingleDist['linSpace'] = dfStats.apply(lambda row: np.linspace(scipy.stats.beta.ppf(0.01,
+                                                                                a=row['BetaParams'][0],
+                                                                                b=row['BetaParams'][1],
+                                                                                loc=row['BetaParams'][2],
+                                                                                scale=row['BetaParams'][3]), 
+                                                            scipy.stats.beta.ppf(0.99,
+                                                                                a=row['BetaParams'][0],
+                                                                                b=row['BetaParams'][1],
+                                                                                loc=row['BetaParams'][2],
+                                                                                scale=row['BetaParams'][3]),
+                                                            1000),axis=1)
+dfStats['BetaLinSpace'] = dfSingleDist['linSpace']
+dfSingleDist['algoVal'] = dfSingleDist.apply(lambda row: [min(0.035,x) for x in scipy.stats.beta.pdf(row['linSpace'],
+                                                                                            a=row['BetaParams'][0],
+                                                                                            b=row['BetaParams'][1],
+                                                                                            loc=row['BetaParams'][2],
+                                                                                            scale=row['BetaParams'][3])],
+                                    axis=1)
+dfSingleDist['algoName'] = "betaPdf"
+betaPdfDf           = dfSingleDist.explode(['linSpace','algoVal']).reset_index(drop=True)
+dfAlgo              = pd.concat([dfAlgo,betaPdfDf], ignore_index=True)
+
+dfSingleDist['algoVal']  = dfSingleDist.apply(lambda row: scipy.stats.beta.cdf(row['linSpace'],
+                                                                     a=row['BetaParams'][0],
+                                                                     b=row['BetaParams'][1],
+                                                                     loc=row['BetaParams'][2],
+                                                                     scale=row['BetaParams'][3]),
+                                    axis=1)
+dfSingleDist['algoName'] = "betaCdf"
+betaCdfDf = dfSingleDist.explode(['linSpace','algoVal']).reset_index(drop=True)
+dfAlgo = pd.concat([dfAlgo,betaCdfDf], ignore_index=True)
+
+# Add the log gamma function
+dfSingleDist['linSpace']    = dfStats.apply(lambda row: np.linspace(scipy.stats.loggamma.ppf(0.01,
+                                                                                    c=row['LogGammaParams'][0],
+                                                                                    loc=row['LogGammaParams'][1],
+                                                                                    scale=row['LogGammaParams'][2]), 
+                                                            scipy.stats.loggamma.ppf(0.99,
+                                                                                    c=row['LogGammaParams'][0],
+                                                                                    loc=row['LogGammaParams'][1],
+                                                                                    scale=row['LogGammaParams'][2]),
+                                                            1000),
+                                    axis=1)
+dfStats['LogGammaLinSpace'] = dfSingleDist['linSpace']
+dfSingleDist['algoVal']     = dfSingleDist.apply(lambda row: [min(0.035,x) for x in scipy.stats.loggamma.pdf(row['linSpace'],
+                                                                                                c=row['LogGammaParams'][0],
+                                                                                                loc=row['LogGammaParams'][1],
+                                                                                                scale=row['LogGammaParams'][2])],
+                                    axis=1)
+dfSingleDist['algoName']    = "logGammaPdf"
+logGammaPdfDf               = dfSingleDist.explode(['linSpace','algoVal']).reset_index(drop=True)
+dfAlgo                      = pd.concat([dfAlgo,logGammaPdfDf], ignore_index=True)
+
+dfSingleDist['algoVal']     = dfSingleDist.apply(lambda row: scipy.stats.loggamma.cdf(row['linSpace'],
+                                                                            c=row['LogGammaParams'][0],
+                                                                            loc=row['LogGammaParams'][1],
+                                                                            scale=row['LogGammaParams'][2]), axis=1)
+dfSingleDist['algoName']    = "logGammaCdf"
+logGammaCdfDf               = dfSingleDist.explode(['linSpace','algoVal']).reset_index(drop=True)
+dfAlgo                      = pd.concat([dfAlgo,logGammaCdfDf], ignore_index=True)
+
+# Add the Generalized extreme distibution function
+dfSingleDist['linSpace']        = dfStats.apply(lambda row: np.linspace(scipy.stats.genextreme.ppf(0.01,
+                                                                                    c=row['GenExtremeParams'][0],
+                                                                                    loc=row['GenExtremeParams'][1],
+                                                                                    scale=row['GenExtremeParams'][2]), 
+                                                            scipy.stats.genextreme.ppf(0.99,
+                                                                                    c=row['GenExtremeParams'][0],
+                                                                                    loc=row['GenExtremeParams'][1],
+                                                                                    scale=row['GenExtremeParams'][2]),
+                                                            1000),
+                                    axis=1)
+dfStats['GenExtremeLinSpace']   = dfSingleDist['linSpace']
+dfSingleDist['algoVal']         = dfSingleDist.apply(lambda row: [min(0.035,x) for x in scipy.stats.genextreme.pdf(row['linSpace'],
+                                                                                                c=row['GenExtremeParams'][0],
+                                                                                                loc=row['GenExtremeParams'][1],
+                                                                                                scale=row['GenExtremeParams'][2])],
+                                    axis=1)
+dfSingleDist['algoName']        = "GenExtremePdf"
+genExtremePdfDf                 = dfSingleDist.explode(['linSpace','algoVal']).reset_index(drop=True)
+dfAlgo                          = pd.concat([dfAlgo,genExtremePdfDf], ignore_index=True)
+
+dfSingleDist['algoVal']         = dfSingleDist.apply(lambda row: scipy.stats.genextreme.cdf(row['linSpace'],
+                                                                            c=row['GenExtremeParams'][0],
+                                                                            loc=row['GenExtremeParams'][1],
+                                                                            scale=row['GenExtremeParams'][2]), axis=1)
+dfSingleDist['algoName']        = "GenExtremeCdf"
+genExtremeCdfDf                 = dfSingleDist.explode(['linSpace','algoVal']).reset_index(drop=True)
+dfAlgo                          = pd.concat([dfAlgo,genExtremeCdfDf], ignore_index=True)
+
+printLineHistogram(dfAlgo,['betaCdf','logGammaCdf','GenExtremeCdf'],title="Cumulative Density Function",histnorm='probability')
+printLineHistogram(dfAlgo,['betaPdf','logGammaPdf','GenExtremePdf'],title="Probability Density Function")
+
+if(1 == C_USE_UNISEX):
+    refCat = "U1"
+else:
+    refCat = "S1"
+dfCorrection['Correction']           = dfStats.apply(lambda row: determineCorrection(row,refCat,),axis=1)
+
+exit()
+
 #dfStats['Sigma']                = dfStats[resultKey].apply(np.std)
 #dfStats['Skew']                 = dfStats[resultKey].apply(scipy.stats.skew)
 #dfStats['SkewedNormLinspace']   = dfStats['Skew'].apply(lambda skew: np.linspace(scipy.stats.skewnorm.ppf(0.01, skew), scipy.stats.skewnorm.ppf(0.99, skew), 1000))
 #dfStats['SkewedLinSpace']       = (dfStats['SkewedNormLinspace']*dfStats['Sigma']) + dfStats['Mean']
 #dfStats['SkewedPdf']            = dfStats.apply(lambda row: scipy.stats.skewnorm.pdf(row['SkewedNormLinspace'], row['Skew']), axis=1)
 #dfStats['SkewedCdf']            = dfStats.apply(lambda row: scipy.stats.skewnorm.cdf(row['SkewedNormLinspace'], row['Skew']), axis=1)
-dfStats['BetaParams']           = dfStats.apply(fitBetaDist, axis=1)
+#dfStats['BetaParams']           = dfStats.apply(fitBetaDist, axis=1)
+'''
 dfStats['BetaLinSpace']         = dfStats.apply(lambda row: np.linspace(scipy.stats.beta.ppf(0.01,
                                                                                 a=row['BetaParams'][0],
                                                                                 b=row['BetaParams'][1],
@@ -249,13 +425,14 @@ dfStats['BetaPdf']              = dfStats.apply(lambda row: [min(0.025,x) for x 
                                                                                 b=row['BetaParams'][1],
                                                                                 loc=row['BetaParams'][2],
                                                                                 scale=row['BetaParams'][3])], axis=1)
-dfStats['BetaCdf']              = dfStats.apply(lambda row: scipy.stats.beta.cdf(row['SkewedLinSpace'],
+dfStats['BetaCdf']              = dfStats.apply(lambda row: scipy.stats.beta.cdf(row['BetaLinSpace'],
                                                                                 a=row['BetaParams'][0],
                                                                                 b=row['BetaParams'][1],
                                                                                 loc=row['BetaParams'][2],
                                                                                 scale=row['BetaParams'][3]), axis=1)
-dfStats['LogGammaParams']       = dfStats.apply(fitLogGammaDist, axis=1)
-dfStats['LogGammaLinSpace']     = dfStats.apply(lambda row: np.linspace(scipy.stats.loggamma.ppf(0.01,
+                                                                                '''
+#dfStats['LogGammaParams']       = dfStats.apply(fitLogGammaDist, axis=1)
+'''dfStats['LogGammaLinSpace']     = dfStats.apply(lambda row: np.linspace(scipy.stats.loggamma.ppf(0.01,
                                                                                 c=row['LogGammaParams'][0],
                                                                                 loc=row['LogGammaParams'][1],
                                                                                 scale=row['LogGammaParams'][2]), 
@@ -264,14 +441,14 @@ dfStats['LogGammaLinSpace']     = dfStats.apply(lambda row: np.linspace(scipy.st
                                                                                 loc=row['LogGammaParams'][1],
                                                                                 scale=row['LogGammaParams'][2]),
                                                                                 1000),axis=1)
-dfStats['LogGammaPdf']          = dfStats.apply(lambda row: [min(0.025,x) for x in scipy.stats.loggamma.pdf(row['BetaLinSpace'],
+dfStats['LogGammaPdf']          = dfStats.apply(lambda row: [min(0.025,x) for x in scipy.stats.loggamma.pdf(row['LogGammaLinSpace'],
                                                                                 c=row['LogGammaParams'][0],
                                                                                 loc=row['LogGammaParams'][1],
                                                                                 scale=row['LogGammaParams'][2])], axis=1)
-dfStats['LogGammaCdf']          = dfStats.apply(lambda row: scipy.stats.loggamma.cdf(row['SkewedLinSpace'],
+dfStats['LogGammaCdf']          = dfStats.apply(lambda row: scipy.stats.loggamma.cdf(row['LogGammaLinSpace'],
                                                                                 c=row['LogGammaParams'][0],
                                                                                 loc=row['LogGammaParams'][1],
-                                                                                scale=row['LogGammaParams'][2]), axis=1)
+                                                                                scale=row['LogGammaParams'][2]), axis=1)'''
 dfStats['Correction']           = dfStats.apply(lambda row: determineCorrection(row,"S1"),axis=1)
 
 '''
