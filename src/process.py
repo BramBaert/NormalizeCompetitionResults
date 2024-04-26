@@ -126,17 +126,17 @@ def unisex(val):
 
     match val:
         case "D1":
-            return "D1 & H1"
+            return "D1 & S1"
         case "S1":
-            return "D1 & H1"
+            return "D1 & S1"
         case "D2":
-            return "D2 & H2"
+            return "D2 & S2"
         case "S2":
-            return "D2 & H2"
+            return "D2 & S2"
         case "D3":
-            return "D3 & H3"
+            return "D3 & S3"
         case "S3":
-            return "D3 & H3"
+            return "D3 & S3"
         case "JD":
             return "JUN"
         case "JH":
@@ -166,14 +166,30 @@ def printLineHistogram(algoData:pd.DataFrame,
     localDf = algoData.loc[algoData["algoName"].isin(lines)]
 
     # Create subplots using Plotly Express
-    fig = px.line(localDf, x='linSpace', y='algoVal', color="algoName", facet_col='Category', facet_col_wrap=3,color_discrete_sequence=['red','green','blue'])
+    fig = px.line(localDf, x='linSpace', y='algoVal', color="algoName", facet_col='Category', facet_col_wrap=3,color_discrete_sequence=['red','green','blue'],
+                    labels={
+                     "linSpace": "Points",
+                     "algoVal": "Probability",
+                     "algoName": "Distribution"
+                 })
 
     # Update layout
     fig.update_layout(
-        title=title,
-        xaxis_title='Points',
-        yaxis_title=yaxis_title
+        title=title
     )
+    if(7 == len(fig.layout['annotations'])):
+        fig.update_layout(
+        xaxis5_title="Points",
+        xaxis6_title="Points",
+        xaxis5_showticklabels=True,
+        xaxis6_showticklabels=True)
+    elif(11 == len(fig.layout['annotations'])):
+        fig.update_layout(
+        xaxis6_title="Points",
+        xaxis6_showticklabels=True)
+    else:
+        print(f"Unknown grid structure {len(fig.layout['annotations'])}")
+    
 
     #fig.print_grid()
 
@@ -188,7 +204,7 @@ def printLineHistogram(algoData:pd.DataFrame,
         #print("Count {} = Cat {}: row = {} , col = {}".format(count,cat,rowVal,colVal))
         fig.add_trace(px.histogram(dfStats_exploded_result.loc[dfStats_exploded_result['Category'] == cat],x=resultKey, histnorm=histnorm, nbins=50,opacity=0.5).data[0],row=rowVal,col=colVal)
     # Show the plot
-    fig.data = fig.data[::-1]
+    #fig.data = fig.data[::-1]
     fig.show()
 
 def normalizeResult(row, resultKey:str, correctionTable:pd.DataFrame, refCat:str = "S1"):
@@ -203,7 +219,7 @@ def normalizeResult(row, resultKey:str, correctionTable:pd.DataFrame, refCat:str
         The Normalized result
 
     An example layout of the correctionTable
-                    BEN         CAD         DUV         JUN     D1 & H1     D2 & H2     D3 & H3 Discipline
+                    BEN         CAD         DUV         JUN     D1 & S1     D2 & S2     D3 & S3 Discipline
         0     146.46111  155.806244   99.546756  221.895903   232.66529  224.432236  200.215601         LK
         1    146.605823  155.951624   99.749401  221.984311  232.744738  224.509675  200.311329         LK
         2    146.750536  156.097005   99.952046   222.07272  232.824185  224.587114  200.407057         LK
@@ -226,7 +242,7 @@ def normalizeResultCDF(row, resultKey:str, correctionTable:pd.DataFrame, refCat:
         The Normalized result
 
     An example layout of the correctionTable
-                    BEN   BEN_CDF         CAD   CAD_CDF     D1 & H1 D1 & H1_CDF     D2 & H2 D2 & H2_CDF     D3 & H3 D3 & H3_CDF         DUV   DUV_CDF         JUN   JUN_CDF Discipline
+                    BEN   BEN_CDF         CAD   CAD_CDF     D1 & S1 D1 & S1_CDF     D2 & S2 D2 & S2_CDF     D3 & S3 D3 & S3_CDF         DUV   DUV_CDF         JUN   JUN_CDF Discipline
         0     146.46111      0.01  155.806244      0.01   232.66529        0.01  224.432236        0.01  200.215601        0.01   99.546756      0.01  221.895903      0.01         LK
         1    146.605823  0.010058  155.951624  0.010049  232.744738    0.010053  224.509675    0.010054  200.311329    0.010056   99.749401  0.010052  221.984311  0.010052         LK
         2    146.750536  0.010115  156.097005  0.010099  232.824185    0.010107  224.587114    0.010109  200.407057    0.010112   99.952046  0.010104   222.07272  0.010105         LK
@@ -279,8 +295,12 @@ dfFit = pd.concat([dfFit, sum_scores], ignore_index=True)
 
 # Make a plot showing the score of the different distirbution algorithms
 dfFit.sort_values(['name'],key=lambda column:column.map(lambda e: algoSorterList.index(e)), inplace=True)
-fig = px.line(dfFit,x='name',y='score',color='Category')
+fig = px.line(dfFit,x='name',y='score',color='Category',log_y=True)
 fig.update_traces(showlegend = True)
+fig.update_layout(title="Fitting result for different types of distributions",
+                    xaxis_title="Distribution",
+                    yaxis_title="Fitting score (lower is better)",
+                    legend_title="Age category")
 fig.show()
 
 # Start creation of the per Category statistics DataFrame
@@ -363,14 +383,7 @@ dfAlgo = explodeStatsFunction(dfStats,resultKey,'Mean',"Mean")
 dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,resultKey,'Median',"Median")], ignore_index=True)
 dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,resultKey,'Min',"Minimum")], ignore_index=True)
 dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,resultKey,'Max',"Maximum")], ignore_index=True)
-'''
-dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'BetaLinSpace','BetaPdf',"Beta Probability Density Function")], ignore_index=True)
-dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'BetaLinSpace','BetaCdf',"Beta Cumalative Density Function")], ignore_index=True)
-dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'LogGammaLinSpace','LogGammaPdf',"Logarithmic Gamma Probability Density Function")], ignore_index=True)
-dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'LogGammaLinSpace','LogGammaCdf',"Logarithmic Gamma Cumalative Density Function")], ignore_index=True)
-dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'GenExtremeLinSpace','GenExtremePdf',"Generalized Extreme Probability Density Function")], ignore_index=True)
-dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'GenExtremeLinSpace','GenExtremeCdf',"Generalized Extreme Cumalative Density Function")], ignore_index=True)
-'''
+
 dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'BetaLinSpace','BetaPdf',"betaPdf")], ignore_index=True)
 dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'BetaLinSpace','BetaCdf',"betaCdf")], ignore_index=True)
 dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'LogGammaLinSpace','LogGammaPdf',"logGammaPdf")], ignore_index=True)
@@ -382,7 +395,7 @@ printLineHistogram(dfAlgo,['betaCdf','logGammaCdf','GenExtremeCdf'],title="Cumul
 printLineHistogram(dfAlgo,['betaPdf','logGammaPdf','GenExtremePdf'],title="Probability Density Function")
 
 if(1 == C_USE_UNISEX):
-    refCat = "D1 & H1"
+    refCat = "D1 & S1"
 else:
     refCat = "S1"
 dfStats['LogGammaCorrection']   = dfStats.apply(lambda row: determineCorrection(row,refCat,"LogGamma"),axis=1)
