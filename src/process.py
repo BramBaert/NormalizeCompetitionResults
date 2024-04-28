@@ -7,7 +7,7 @@ from distfit import distfit
 
 C_USE_SHOT_COUNT_NORMALIZED = 0
 C_NORMALIZED_SHOT_COUNT = 30
-C_USE_UNISEX = 1
+C_USE_UNISEX = 0
 
 def calculate_result_reversed(row):
     ''' This function reverses the results starting from the maximum result as 0
@@ -248,14 +248,15 @@ def normalizeResultCDF(row, resultKey:str, correctionTable:pd.DataFrame, refCat:
         3     146.89525  0.010174  156.242386  0.010149  232.903632    0.010161  224.664553    0.010164  200.502785    0.010169  100.154691  0.010157  222.161128  0.010158         LK
         ...
     """
-
     disciplineCorrectionDf = correctionTable.loc[correctionTable['Discipline'] == row['Discipline']]
     fromRow = disciplineCorrectionDf.iloc[(disciplineCorrectionDf[row['Category']]-row[resultKey]).abs().argsort()[:1]]
     toRow   = disciplineCorrectionDf.iloc[(disciplineCorrectionDf[f"{refCat}_CDF"]-fromRow[f"{row['Category']}_CDF"].values[0]).abs().argsort()[:1]]
-    return round(row[resultKey]*(fromRow[refCat].values[0]/toRow[row['Category']].values[0]),2)
+    return round(row[resultKey]*(toRow[refCat].values[0]/fromRow[row['Category']].values[0]),2)
 
 # Import the data
 df = pd.read_csv('input_data/BE_national.csv', encoding='iso-8859-1')
+df = df.loc[(df['Discipline'] == "LK") & (df['Anomaly'] == "No")]
+print(df['Category'].value_counts())
 
 # Make the categories uni-sex
 if C_USE_UNISEX:
