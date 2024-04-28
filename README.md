@@ -90,43 +90,13 @@ What it comes down to is the solid lines of the box contain the center most half
 If the normalization process works perfectly each of these key features (min, q1,median, q3 and max) should align with the reference category.
 ### Results in a graph
 Below is a box plot graph of the normalization process applied to the input data itself.
-![Box plot of the normalized input data](pictures/result_box_plot_unisex_anomaly.png?raw=true)
-The reason why I came up with the second method for normalization (the one base on the CDF value). Is the difference in the q1, median and q3 features for the youth categories and the min of the 'DUV' category. However using this second method exacerbates the behavior.  
-
-Looking at the data of the 'DUV' and 'CAD' categories in the previous PDF charts we can see that both have more "low" scores than what would be statistically expected. This can be easily explained in terms of the selection criteria for the different categories. For the older categories there is a true points based selection as the event does have a limit to the number of competitors able to participate in the national event. While for the younger categories the selection criteria is practically speaking reduced to "having competed in a regional event". All in all this actually does what this whole experiment is about, increasing the participation for younger competitors so I 'm all for it. However this does create "anomalies" when trying to statistically model a category. 
-When removing thes (#5) anomalous result we get the following box plot.   
 ![Box plot of the normalized input data](pictures/result_box_plot_unisex.png?raw=true)
+The reason why I came up with the second method for normalization (the one base on the CDF value). Is the difference in the q1, median and q3 features for the youth categories.
 
 ### Results in a ranking
 Just for the gist of it, applying this method to the results of the latest national competitions give a TOP 25 raking as following
 
-| Year | Event | Discipline | Category | Last Name | First Name | Normalized | Original result |  Method | 
-| :--: | :---: | :--------: | :------: | :-------: | :--------: | :--------: | :-------------: | :-----: | 
-| 2023 | BOA   | LK         |      BEN |      ADRIAENSSEN |      Ruben | 630.22     | 293.900         | CDF     | 
-| 2023 | BOA   | LK         |  D1 & S1 |        VERCRUSSE |  Stephanie | 626.30     | 313.150         | CDF     | 
-| 2023 | BOA   | LK         |      JUN |       LAMBRECHTS |      Tessa | 626.25     | 311.300         | CDF     | 
-| 2023 | BOA   | LK         |  D2 & S2 |           MAHAUT |     Claudy | 625.32     | 302.400         | CDF     | 
-| 2023 | BOA   | LK         |  D1 & S1 |             CAPS |      Jessy | 624.30     | 312.150         | CDF     | 
-| 2023 | BOA   | LK         |  D1 & S1 |           JAEGER |       Anke | 622.60     | 311.300         | CDF     | 
-| 2023 | BOA   | LK         |  D2 & S2 |          LECUYER |    Michael | 621.05     | 300.400         | CDF     | 
-| 2023 | BOA   | LK         |  D1 & S1 |          BADDOUH |     Anissa | 620.50     | 310.250         | CDF     | 
-| 2023 | BOA   | LK         |      BEN |          LO ZITO |   Fiorella | 620.50     | 288.600         | CDF     | 
-| 2023 | BOA   | LK         |  D1 & S1 |      VANDEVYVERE |       Emma | 620.30     | 310.150         | CDF     | 
-| 2023 | BOA   | LK         |      JUN |           NELLES |     Nicole | 619.73     | 307.600         | CDF     | 
-| 2023 | BOA   | LK         |  D1 & S1 |        VERHEYDEN |     Anneke | 618.40     | 309.200         | CDF     | 
-| 2023 | BOA   | LK         |      JUN |            NAVEZ |     Rachel | 617.03     | 306.000         | CDF     | 
-| 2023 | BOA   | LK         |      JUN |          MARCHAL |     Romane | 615.85     | 305.250         | CDF     | 
-| 2023 | BOA   | LK         |      CAD |           GEHLEN |       Leon | 615.25     | 292.875         | CDF     | 
-| 2023 | BOA   | LK         |      JUN | VANDROOGENBROECK |     Océane | 614.41     | 304.450         | CDF     | 
-| 2023 | BOA   | LK         |      JUN |        HERBILLON |       Lana | 614.15     | 304.300         | CDF     | 
-| 2023 | BOA   | LK         |  D1 & S1 |           GEHLEN |    Melissa | 614.10     | 307.050         | CDF     | 
-| 2023 | BOA   | LK         |      CAD |        RIGNANESE |      Clara | 613.99     | 291.975         | CDF     | 
-| 2023 | BOA   | LK         |      JUN |          BIJNENS |   Annelore | 613.15     | 303.650         | CDF     | 
-| 2023 | BOA   | LK         |  D3 & S3 |          THIRION |       Paul | 612.91     | 290.100         | CDF     | 
-| 2023 | BOA   | LK         |  D1 & S1 |             HODY |      Steve | 611.30     | 305.650         | CDF     | 
-| 2023 | BOA   | LK         |      CAD |          PERLEAU |     Coleen | 610.91     | 289.125         | CDF     | 
-| 2023 | BOA   | LK         |      CAD |             RAUW |       Lois | 610.91     | 289.125         | CDF     | 
-| 2023 | BOA   | LK         |      JUN |           DEPREZ |     Nathan | 610.56     | 302.200         | CDF     | 
+![BOA 2023 Top 25 ranking post normalization](pictures/BOA_2023_Top25.png?raw=true)
 
 ## Conclusion
 2 Methods have been provided to normalize the points of a skill based result competition over different age categories. Both methods provide a decent result with the LinSpace method giving the better result in our practical example. The CDF method is however mathematical the better one.
