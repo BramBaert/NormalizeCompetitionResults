@@ -48,7 +48,7 @@ To get a feel if my gut feeling that such aggregation is was tolerable, I turned
 Although the used scripts can still work with gender specific categories, I believe in this use-case the better result is achieved by disregarding gender when trying to fit a statistical model to an age category.
 
 ## Distribution Fitting
-My initial taught process was to try and fit a skewed distribution to the data however this proved to result in rather poor results. After doing more research on possible distribution functions I came accross http://zoonek2.free.fr/UNIX/48_R/07.html where I picked up the beta function as a candidate. It looked promising because of its feature of being able to create a sharp fall-off at the end of the distribution, as can be seen below. This really applicable to point based competition result with a maximum achievable result.
+My initial thought process was to try and fit a skewed distribution to the data however this proved to result in rather poor results. After doing more research on possible distribution functions I came across http://zoonek2.free.fr/UNIX/48_R/07.html where I picked up the beta function as a candidate. It looked promising because of its feature of being able to create a sharp fall-off at the end of the distribution, as can be seen below. This really applicable to point based competition result with a maximum achievable result.
 ![Theoretical beta functions](pictures/beta_function.png?raw=true)
 On my initial data set containing 3 years worth of national competition results  this still didn't get me the desired performance. Increasing the dataset to 5 years worth of data did improve the results but left some categories that really didn't behave at all
 
@@ -56,19 +56,85 @@ Looking around further, I came across the python lib distfit (https://erdogant.g
 ![Fitting results for different types of distributions](pictures/dist_fitting_unisex.png?raw=true)
 It shows a sorted result of the different distribution algorithms based on the cumulative score for all categories. With this result I added loggamma and genextreme to my analysis. This results in the below graphs.
 ![Probability Density functions](pictures/pdf_unisex.png?raw=true)
-Note the strange behavior beta PDF function for the 'CAD' category. This is also the case for the 'D2' category when not combining genders.
+Note the strange behavior of the beta PDF function for the 'CAD' category. This is also the case for the 'D2' category when not combining genders.
 
 To be able to analyse the results the below picture gives an idea how things look when you have an ideal data set. Notice that the line of the distribution function crosses the center of each bar.
+
 ![Ideal histogram](pictures/ideal_histogram.jpg?raw=true)
 
 Doing this analysis for our data, it is my opinion that the loggamma function is better at capturing the peak and the sharp fall-off at the end. This is then also the distribution function I used for the following chapters.
 
-## Normalization Factor
-## Conclusion
+## Normalization
+Now that we have the parameters that describe how competitors within a category are distributed we have to find a way to translate that to a "reference". The first idea was to use the linear spacing between the 1% and 99% cumulative density function points (points = the result achieved in the competition) for each distribution. 
+
+To put it in a formula the linear spacing can be defined as following: 
+> **LinSpace**<sub>(CDF<sub>cat</sub>,n)</sub> = CDF<sub>cat</sub><sub>(.01)</sub> + ( ( CDF<sub>cat</sub><sub>(.99)</sub>  – CDF<sub>cat</sub><sub>(.01)</sub> ) / <*table_size*> ) * n
+
+This same linear distance in the correction table can then be used to determine the score in the "reference" category. However when I reviewed the normalized results, the outcome did not match my expectations.
+
+
+Thinking further about it I realized that the linear spacing isn't the proper way of doing it as the slope acuteness for the respective cumulative density functions differs between categories. This means that from one category the probability of a point being achieved between two linearly spaced points is different. To account for this a second method is used that finds the point in the "reference" category that has a matching cumulative density. With the point from the source category and the reference category a multiplier can then be found to normalize the competitors result.
+
+The below figure gives a visual aid on how each compensation method works.
+![Normalization methods](pictures/normalization_methods.png?raw=true)
+### Normalization for club competitions
+Above we described methods on how to normalize results from competitions following the national rules. However often club and regional competitions adopt a short format for their competitions to lower the barrier for entry. 
+
+This means that we need to calculate compensation factors in function of those shorter format competitions, practically for this project this means a lower shot count. This is achieved be pre-processing the input data and normalize the shot count based on an input parameter "competition shot count" and the shot count per category as defined in one of the previous chapters.
 ## Results
+### Background on box plots
+To analyse the results of the normalization process we 'll make use of boxplots. The below graph gives an explanation on how to read these.
+![Box plot of the normalized input data](pictures/reading_boxplots.png?raw=true)
+What it comes down to is the solid lines of the box contain the center most half of all values in the data set with the solid line in the middle being the exact half point (median). The dashed line is the average (mean). The "whiskers" indicate the top and bottom 25% of data points respectively.
+
+If the normalization process works perfectly each of these key features (min, q1,median, q3 and max) should align with the reference category.
+### Results in a graph
+Below is a box plot graph of the normalization process applied to the input data itself.
+![Box plot of the normalized input data](pictures/result_box_plot_unisex_anomaly.png?raw=true)
+The reason why I came up with the second method for normalization (the one base on the CDF value). Is the difference in the q1, median and q3 features for the youth categories and the min of the 'DUV' category. However using this second method exacerbates the behavior.  
+
+Looking at the data of the 'DUV' and 'CAD' categories in the previous PDF charts we can see that both have more "low" scores than what would be statistically expected. This can be easily explained in terms of the selection criteria for the different categories. For the older categories there is a true points based selection as the event does have a limit to the number of competitors able to participate in the national event. While for the younger categories the selection criteria is practically speaking reduced to "having competed in a regional event". All in all this actually does what this whole experiment is about, increasing the participation for younger competitors so I 'm all for it. However this does create "anomalies" when trying to statistically model a category. 
+When removing thes (#5) anomalous result we get the following box plot.   
+![Box plot of the normalized input data](pictures/result_box_plot_unisex.png?raw=true)
+
+### Results in a ranking
+Just for the gist of it, applying this method to the results of the latest national competitions give a TOP 25 raking as following
+
+| Year | Event | Discipline | Category | Last Name | First Name | Normalized | Original result |  Method | 
+| :--: | :---: | :--------: | :------: | :-------: | :--------: | :--------: | :-------------: | :-----: | 
+| 2023 | BOA   | LK         |      BEN |      ADRIAENSSEN |      Ruben | 630.22     | 293.900         | CDF     | 
+| 2023 | BOA   | LK         |  D1 & S1 |        VERCRUSSE |  Stephanie | 626.30     | 313.150         | CDF     | 
+| 2023 | BOA   | LK         |      JUN |       LAMBRECHTS |      Tessa | 626.25     | 311.300         | CDF     | 
+| 2023 | BOA   | LK         |  D2 & S2 |           MAHAUT |     Claudy | 625.32     | 302.400         | CDF     | 
+| 2023 | BOA   | LK         |  D1 & S1 |             CAPS |      Jessy | 624.30     | 312.150         | CDF     | 
+| 2023 | BOA   | LK         |  D1 & S1 |           JAEGER |       Anke | 622.60     | 311.300         | CDF     | 
+| 2023 | BOA   | LK         |  D2 & S2 |          LECUYER |    Michael | 621.05     | 300.400         | CDF     | 
+| 2023 | BOA   | LK         |  D1 & S1 |          BADDOUH |     Anissa | 620.50     | 310.250         | CDF     | 
+| 2023 | BOA   | LK         |      BEN |          LO ZITO |   Fiorella | 620.50     | 288.600         | CDF     | 
+| 2023 | BOA   | LK         |  D1 & S1 |      VANDEVYVERE |       Emma | 620.30     | 310.150         | CDF     | 
+| 2023 | BOA   | LK         |      JUN |           NELLES |     Nicole | 619.73     | 307.600         | CDF     | 
+| 2023 | BOA   | LK         |  D1 & S1 |        VERHEYDEN |     Anneke | 618.40     | 309.200         | CDF     | 
+| 2023 | BOA   | LK         |      JUN |            NAVEZ |     Rachel | 617.03     | 306.000         | CDF     | 
+| 2023 | BOA   | LK         |      JUN |          MARCHAL |     Romane | 615.85     | 305.250         | CDF     | 
+| 2023 | BOA   | LK         |      CAD |           GEHLEN |       Leon | 615.25     | 292.875         | CDF     | 
+| 2023 | BOA   | LK         |      JUN | VANDROOGENBROECK |     Océane | 614.41     | 304.450         | CDF     | 
+| 2023 | BOA   | LK         |      JUN |        HERBILLON |       Lana | 614.15     | 304.300         | CDF     | 
+| 2023 | BOA   | LK         |  D1 & S1 |           GEHLEN |    Melissa | 614.10     | 307.050         | CDF     | 
+| 2023 | BOA   | LK         |      CAD |        RIGNANESE |      Clara | 613.99     | 291.975         | CDF     | 
+| 2023 | BOA   | LK         |      JUN |          BIJNENS |   Annelore | 613.15     | 303.650         | CDF     | 
+| 2023 | BOA   | LK         |  D3 & S3 |          THIRION |       Paul | 612.91     | 290.100         | CDF     | 
+| 2023 | BOA   | LK         |  D1 & S1 |             HODY |      Steve | 611.30     | 305.650         | CDF     | 
+| 2023 | BOA   | LK         |      CAD |          PERLEAU |     Coleen | 610.91     | 289.125         | CDF     | 
+| 2023 | BOA   | LK         |      CAD |             RAUW |       Lois | 610.91     | 289.125         | CDF     | 
+| 2023 | BOA   | LK         |      JUN |           DEPREZ |     Nathan | 610.56     | 302.200         | CDF     | 
+
+## Conclusion
+2 Methods have been provided to normalize the points of a skill based result competition over different age categories. Both methods provide a decent result with the LinSpace method giving the better result in our practical example. The CDF method is however mathematical the better one.
 ## Cross Discipline
+Although currently not provided the process can also be applied across disciplines. 
 ## Future Work
-- In 2024 the Junior categories has been changed to go from 16 - 17 years old to 16 - 20 years old. As the data we have still works with 
+- In 2024 the Junior categories has been changed to go from 16 - 17 years old to 16 - 20 years old. As the data we have still works with the previous age group, we could check Junior competitor names across the different years and alter the data to post-pone there respective category change to D1 / S1 with 3 years. Ideally this would be done on 8 years of data and then drop the earliest 3 years to maintain sufficient "corrected" data for proper fitting. 
 - Create a CLI interface to have a parametrically way of fitting data and creating the correction tables.
 - Create a CLI interface to use pre-existing correction tables to normalize results provided in a CSV file selected by input arguments
-- Create a example calculation sheet (libre office, Excel, etc) that can use a correction table to normalize results directly in a printable format for club competitions.
+- Create a example calculation sheet (libre office, Excel, Google Sheets) that can use a correction table to normalize results directly in a printable format for club competitions.
+- Adding the LP discipline data

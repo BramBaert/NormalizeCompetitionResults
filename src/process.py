@@ -170,8 +170,7 @@ def printLineHistogram(algoData:pd.DataFrame,
                     labels={
                      "linSpace": "Points",
                      "algoVal": "Probability",
-                     "algoName": "Distribution"
-                 })
+                     "algoName": "Distribution"})
 
     # Update layout
     fig.update_layout(
@@ -261,6 +260,9 @@ df = pd.read_csv('input_data/BE_national.csv', encoding='iso-8859-1')
 # Make the categories uni-sex
 if C_USE_UNISEX:
     df['Category'] = df['Category'].apply(unisex)
+    categoryOrder = ["DUV","BEN","CAD","JUN","D1 & S1","D2 & S2", "D3 & S3"]
+else:
+    categoryOrder = ["DUV","BEN","CAD","JD","JH","D1","S1","D2","S2","D3","S3"]
 
 # Normalize all shots to the target number of competition shots TODO make the targetShots a commandline argument
 df['ResultNormalizedShots'] = df.apply(lambda row: normalize_shots(row,C_NORMALIZED_SHOT_COUNT), axis=1)
@@ -453,7 +455,8 @@ dfNormalized[resultKey] = dfNormalized.apply(lambda row: normalizeResultCDF(row,
 dfNormalized['State'] = "CDF Normalized"
 dfCompare = pd.concat([dfCompare,dfNormalized],ignore_index=True)
 
-fig = px.box(dfCompare,y=resultKey,x='Category',color='State')
+fig = px.box(dfCompare,y=resultKey,x='Category',color='State',category_orders={'Category':categoryOrder})
+fig.update_traces(boxpoints=False, boxmean=True)
 fig.update_layout(title="Comparison between original results and Normalized results")
 fig.show()
 
