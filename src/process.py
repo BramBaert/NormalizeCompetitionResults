@@ -7,7 +7,7 @@ from distfit import distfit
 
 C_USE_SHOT_COUNT_NORMALIZED = 0
 C_NORMALIZED_SHOT_COUNT = 30
-C_USE_UNISEX = 0
+C_USE_UNISEX = 1
 
 def calculate_result_reversed(row):
     ''' This function reverses the results starting from the maximum result as 0
@@ -189,7 +189,6 @@ def printLineHistogram(algoData:pd.DataFrame,
     else:
         print(f"Unknown grid structure {len(fig.layout['annotations'])}")
     
-
     #fig.print_grid()
 
     dfStats_exploded_result = dfStats.explode([resultKey]).reset_index(drop=True)
@@ -206,14 +205,15 @@ def printLineHistogram(algoData:pd.DataFrame,
     #fig.data = fig.data[::-1]
     fig.show()
 
-def normalizeResult(row, resultKey:str, correctionTable:pd.DataFrame, refCat:str = "S1"):
+def normalizeResult(row, resultKey:str, correctionTable:pd.DataFrame, refCat:str = "S1", refDiscipline:str = "LK"):
     """ This function will return the normalized result of the value in resultKey column for the respective Discipline and Category
     Input:
         row:              A row from a dataframe containing at least the column 'Category', 'Discipline' and the provided resultKey
         resultKey:        The column to pick, the result to normalize, from
         correctionTable:  A table consisting of a column per Category as well as Discipline column. The rows are how to go from \
                           a result in one category to the 'normalized' result of another category
-        refCat:           The Category string to be used to find the reference category where to normalize towards 
+        refCat:           The Category string to be used to find the reference category where to normalize towards
+        refDiscipline     The Discipline string to be used to find the reference discipline where to normalize towards
     Return:
         The Normalized result
 
@@ -228,7 +228,7 @@ def normalizeResult(row, resultKey:str, correctionTable:pd.DataFrame, refCat:str
     rowCorrection = disciplineCorrectionDf.iloc[(disciplineCorrectionDf[row['Category']]-row[resultKey]).abs().argsort()[:1]]
     return row[resultKey]*(rowCorrection[refCat]/rowCorrection[row['Category']]).values[0]
 
-def normalizeResultCDF(row, resultKey:str, correctionTable:pd.DataFrame, refCat:str = "S1"):
+def normalizeResultCDF(row, resultKey:str, correctionTable:pd.DataFrame, refCat:str = "S1", refDiscipline:str = "LK"):
     """ This function will return the normalized result of the value in resultKey column for the respective Discipline and Category
     Input:
         row:              A row from a DataFrame containing at least the column 'Category', 'Discipline' and the provided resultKey
@@ -237,6 +237,7 @@ def normalizeResultCDF(row, resultKey:str, correctionTable:pd.DataFrame, refCat:
                           Category containing the result in the first element and the CDF value for that result in the second \
                           element.
         refCat:           The Category string to be used to find the reference category where to normalize towards 
+        refDiscipline     The Discipline string to be used to find the reference discipline where to normalize towards
     Return:
         The Normalized result
 
@@ -255,8 +256,10 @@ def normalizeResultCDF(row, resultKey:str, correctionTable:pd.DataFrame, refCat:
 
 # Import the data
 df = pd.read_csv('input_data/BE_national.csv', encoding='iso-8859-1')
-df = df.loc[(df['Discipline'] == "LK") & (df['Anomaly'] == "No")]
-print(df['Category'].value_counts())
+#df = df.loc[(df['Discipline'] == "LK") & (df['Anomaly'] == "No")]
+#print(df['Category'].value_counts())
+df = df.loc[df['Anomaly'] == "No"]
+
 
 # Make the categories uni-sex
 if C_USE_UNISEX:
@@ -394,8 +397,10 @@ dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'LogGammaLinSpace','LogG
 dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'GenExtremeLinSpace','GenExtremePdf',"GenExtremePdf")], ignore_index=True)
 dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'GenExtremeLinSpace','GenExtremeCdf',"GenExtremeCdf")], ignore_index=True)
 
-printLineHistogram(dfAlgo,['betaCdf','logGammaCdf','GenExtremeCdf'],title="Cumulative Density Function",histnorm='probability')
-printLineHistogram(dfAlgo,['betaPdf','logGammaPdf','GenExtremePdf'],title="Probability Density Function")
+printLineHistogram(dfAlgo.loc[dfAlgo['Discipline'] == "LK"],['betaCdf','logGammaCdf','GenExtremeCdf'],title="Air Rifle: Cumulative Density Function",histnorm='probability')
+printLineHistogram(dfAlgo.loc[dfAlgo['Discipline'] == "LK"],['betaPdf','logGammaPdf','GenExtremePdf'],title="Air Rifle: Probability Density Function")
+printLineHistogram(dfAlgo.loc[dfAlgo['Discipline'] == "LP"],['betaCdf','logGammaCdf','GenExtremeCdf'],title="Air Pistol: Cumulative Density Function",histnorm='probability')
+printLineHistogram(dfAlgo.loc[dfAlgo['Discipline'] == "LP"],['betaPdf','logGammaPdf','GenExtremePdf'],title="Air Pistol: Probability Density Function")
 
 if(1 == C_USE_UNISEX):
     refCat = "D1 & S1"
