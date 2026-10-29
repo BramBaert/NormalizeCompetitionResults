@@ -6,8 +6,16 @@ With the lack of q sufficient basis of competitors, it is hard to motivation peo
 Within this coding project I wanted to experiment if it is possible to create such a "fair" comparison across age groups by applying statistical method to determine correction factors to normalize the results over all competitors.
 
 # Usage
-1. Install python version 3.11 or above is advised
-2. Install the required packages pip install -r requirements.txt
+1. Install [uv](https://docs.astral.sh/uv/)
+2. Run the script from the repository root, uv installs Python 3.11 and the required packages on the first run
+
+```
+uv run src/process.py              # normalized ranking for the latest year in the data
+uv run src/process.py --year 2024  # normalized ranking for a specific year
+uv run src/process.py --no-plots   # skip opening the plotly figures
+```
+
+The ranking is written to `BOA <year> Normalized.csv`.
 
 ## Creation of your own correction factors
 CLI to be made

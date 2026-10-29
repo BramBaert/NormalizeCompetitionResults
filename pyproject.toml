@@ -1,0 +1,14 @@
+[project]
+name = "normalize-competition-results"
+version = "0.1.0"
+description = "Normalize shooting competition results across age categories"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "distfit==1.7.3",
+    "matplotlib==3.8.3",
+    "numpy==1.26.4",
+    "pandas==2.2.1",
+    "plotly==5.20.0",
+    "scipy==1.12.0",
+]
