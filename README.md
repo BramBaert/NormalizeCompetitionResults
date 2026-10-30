@@ -18,23 +18,9 @@ Note how uneven the score scale is compared with the points: in the crowded midd
 
 A score can go slightly above 100 when a result is better than anything in the data. That is intended: more points must always mean a higher score. An Olympic-level air rifle qualification of 633.0 scores 100.3, an air pistol qualification of 587 scores 103.0.
 
-## Does it work?
+## Seeing it in action
 
-If the scores are fair, every age group in both disciplines should look the same on the score scale: the middle half of the shooters between 25 and 75, half of them above 50. The red boxes show exactly that for all 3,086 results in the data.
-
-![Score per discipline and age group](pictures/score_box_plot.png?raw=true)
-
-The blue boxes are the *linear method*, an earlier attempt that is kept for comparison: it scores too high and differs per group (see [how we got here](#how-we-got-here)).
-
-<details>
-<summary>How to read a box plot</summary>
-
-![Reading box plots](pictures/reading_boxplots.png?raw=true)
-
-The box holds the middle half of the scores, the solid line in the box is the median (half of the shooters score higher) and the dashed line the mean. The whiskers show the lowest and highest quarter.
-</details>
-
-All shooters of the 2025 Belgian championship in one ranking:
+All shooters of the 2025 Belgian championship, both disciplines and all ages, in one ranking:
 
 | # | Shooter | Discipline | Category | Result (shots) | Score |
 | --: | :-- | :-- | :-- | --: | --: |
@@ -49,7 +35,7 @@ All shooters of the 2025 Belgian championship in one ranking:
 | 9 | VANDROOGENBROECK Océane | Air rifle | Junior | 618.0 (60) | 97.4 |
 | 10 | MAHAUT Claudy | Air rifle | D3 & S3 | 584.6 (60) | 97.4 |
 
-Cadets, juniors, seniors and veterans of both disciplines all reach the top. The full ranking is in [`BOA 2025 Normalized.csv`](BOA%202025%20Normalized.csv).
+Cadets, juniors, seniors and veterans of both disciplines all reach the top. The full ranking is in [`BOA 2025 Normalized.csv`](BOA%202025%20Normalized.csv). Whether that is fair for every group, not just at the top, is shown in [the proof of the pudding](#the-proof-of-the-pudding).
 
 ## Using it
 
@@ -166,7 +152,23 @@ The linear method is mathematically wrong, though: the steepness of the CDF diff
 - **Air pistol data was added.** A rifle reference category cannot rank pistol shooters, and a separate reference per discipline still gives two rankings.
 - **The score was made understandable.** "You would beat 57 out of 100 shooters your age" means something to every member; "you would have shot 287.4 as a senior" does not.
 
-With the share of shooters as the score itself, the box plot above makes the difference between the methods visible. The CDF method puts every group on 25 / 50 / 75, as it should. The linear method scores too high (medians of 65 - 78) and differs per group. That settled it: the CDF method is used, the linear method is only kept for comparison.
+With the share of shooters as the score itself, both methods could be compared on the scale where it matters. That settled it, as the next chapter shows.
+
+## The proof of the pudding
+
+If the scores are fair, every age group in both disciplines looks the same on the score scale: the middle half of the shooters between 25 and 75, half of them above 50. The red boxes, the CDF method that is used, show exactly that for all 3,086 results in the data.
+
+![Score per discipline and age group](pictures/score_box_plot.png?raw=true)
+
+The blue boxes are the linear method: it scores too high (medians of 65 - 78) and differs per group. It is only kept for comparison.
+
+<details>
+<summary>How to read a box plot</summary>
+
+![Reading box plots](pictures/reading_boxplots.png?raw=true)
+
+The box holds the middle half of the scores, the solid line in the box is the median (half of the shooters score higher) and the dashed line the mean. The whiskers show the lowest and highest quarter.
+</details>
 
 ## Future work
 

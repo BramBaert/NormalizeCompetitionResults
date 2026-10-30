@@ -18,23 +18,9 @@ Merk op hoe ongelijk de score-schaal is tegenover de punten: in het drukke midde
 
 Een score kan net boven 100 uitkomen als een resultaat beter is dan alles in de gegevens. Dat is de bedoeling: meer punten moet altijd een hogere score geven. Een olympische kwalificatie van 633,0 met de luchtkarabijn scoort 100,3, een kwalificatie van 587 met het luchtpistool 103,0.
 
-## Werkt het?
+## In de praktijk
 
-Als de scores eerlijk zijn, ziet elke leeftijdsgroep in beide disciplines er op de score-schaal hetzelfde uit: de middelste helft van de schutters tussen 25 en 75, de helft boven 50. De rode boxen tonen precies dat voor alle 3.086 resultaten in de gegevens.
-
-![Score per discipline en leeftijdsgroep](pictures/score_box_plot.png?raw=true)
-
-De blauwe boxen zijn de *lineaire methode*, een eerdere poging die ter vergelijking bewaard blijft: ze scoort te hoog en verschilt per groep (zie [hoe we hier kwamen](#hoe-we-hier-kwamen)).
-
-<details>
-<summary>Hoe lees je een boxplot?</summary>
-
-![Boxplots lezen](pictures/reading_boxplots.png?raw=true)
-
-De box bevat de middelste helft van de scores, de volle lijn in de box is de mediaan (de helft van de schutters scoort hoger) en de stippellijn het gemiddelde. De snorharen tonen het laagste en het hoogste kwart.
-</details>
-
-Alle schutters van het Belgisch kampioenschap 2025 in één klassement:
+Alle schutters van het Belgisch kampioenschap 2025, beide disciplines en alle leeftijden, in één klassement:
 
 | # | Schutter | Discipline | Categorie | Resultaat (schoten) | Score |
 | --: | :-- | :-- | :-- | --: | --: |
@@ -49,7 +35,7 @@ Alle schutters van het Belgisch kampioenschap 2025 in één klassement:
 | 9 | VANDROOGENBROECK Océane | Luchtkarabijn | Junior | 618,0 (60) | 97,4 |
 | 10 | MAHAUT Claudy | Luchtkarabijn | D3 & S3 | 584,6 (60) | 97,4 |
 
-Cadetten, junioren, senioren en veteranen van beide disciplines halen allemaal de top. Het volledige klassement staat in [`BOA 2025 Normalized.csv`](BOA%202025%20Normalized.csv).
+Cadetten, junioren, senioren en veteranen van beide disciplines halen allemaal de top. Het volledige klassement staat in [`BOA 2025 Normalized.csv`](BOA%202025%20Normalized.csv). Of dat voor elke groep eerlijk is, en niet alleen aan de top, toont [de proef op de som](#de-proef-op-de-som).
 
 ## Gebruik
 
@@ -166,7 +152,23 @@ Wiskundig klopt de lineaire methode echter niet: de steilheid van de CDF verschi
 - **De gegevens van het luchtpistool kwamen erbij.** Een referentiecategorie van de karabijn kan geen pistoolschutters rangschikken, en een aparte referentie per discipline geeft nog altijd twee klassementen.
 - **De score moest begrijpelijk worden.** "Je zou 57 van de 100 schutters van jouw leeftijd verslaan" zegt elk lid iets; "als senior had je 287,4 geschoten" niet.
 
-Met het aandeel schutters als score zelf maakt de boxplot hierboven het verschil tussen de methodes zichtbaar. De CDF-methode zet elke groep op 25 / 50 / 75, zoals het hoort. De lineaire methode scoort te hoog (medianen van 65 - 78) en verschilt per groep. Daarmee was de keuze gemaakt: de CDF-methode wordt gebruikt, de lineaire methode blijft enkel ter vergelijking.
+Met het aandeel schutters als score zelf konden beide methodes vergeleken worden op de schaal waar het om draait. Daarmee was de keuze gemaakt, zoals het volgende hoofdstuk toont.
+
+## De proef op de som
+
+Als de scores eerlijk zijn, ziet elke leeftijdsgroep in beide disciplines er op de score-schaal hetzelfde uit: de middelste helft van de schutters tussen 25 en 75, de helft boven 50. De rode boxen, de CDF-methode die gebruikt wordt, tonen precies dat voor alle 3.086 resultaten in de gegevens.
+
+![Score per discipline en leeftijdsgroep](pictures/score_box_plot.png?raw=true)
+
+De blauwe boxen zijn de lineaire methode: ze scoort te hoog (medianen van 65 - 78) en verschilt per groep. Ze blijft enkel ter vergelijking.
+
+<details>
+<summary>Hoe lees je een boxplot?</summary>
+
+![Boxplots lezen](pictures/reading_boxplots.png?raw=true)
+
+De box bevat de middelste helft van de scores, de volle lijn in de box is de mediaan (de helft van de schutters scoort hoger) en de stippellijn het gemiddelde. De snorharen tonen het laagste en het hoogste kwart.
+</details>
 
 ## Verder werk
 
