@@ -1,12 +1,12 @@
 ''' Draw the explainer figure of the 0 - 100 score: two real BOA distributions (LK D1 & S1, LP D2 & S2)
     on their points scale with the score as a second scale below, and two example shooters showing how
-    a lower pistol result can rank above a higher rifle result. Made in Dutch and English.
+    a lower pistol result can rank above a higher rifle result. Made in Dutch, English and French.
 
     The distributions are fitted like process.py does (loggamma on the results normalized to 30 shots,
     unisex groups) and the score uses the exported CDF correction table, exactly like the club workbook.
 
     Usage: uv run src/plot_explainer.py [--output pictures/score_explainer] [--html]
-           writes <output>_nl.png and <output>_en.png
+           writes <output>_nl.png, <output>_en.png and <output>_fr.png
 '''
 import argparse
 import numpy as np
@@ -48,6 +48,18 @@ TEXT = {
         area="<b>{score} out of 100 shooters<br>score lower</b>",
         ranking="Club ranking",
         rankingLine="{result} points → <b>{score}</b> out of 100"),
+    "fr": dict(
+        separators=", ",
+        panel={"LK": "Carabine à air comprimé · Senior 1 (21 - 49 ans)", "LP": "Pistolet à air comprimé · Senior 2 (50 - 59 ans)"},
+        discipline={"LK": "carabine", "LP": "pistolet"},
+        source="Résultats du championnat de Belgique (BOA) ramenés à {shots} coups, n = {n}",
+        points="points",
+        scale="sur 100<br>tireurs",
+        shooter="Tireur {who}",
+        callout="<b>{shooter} : {result} points</b><br>bat {score} tireurs sur 100",
+        area="<b>{score} tireurs sur 100<br>font moins</b>",
+        ranking="Classement du club",
+        rankingLine="{result} points → <b>{score}</b> sur 100"),
 }
 INK, MUTED = "#2a3f5f", "#506784"
 X_DOMAIN = [0.06, 0.74]
@@ -169,7 +181,7 @@ def buildFigure(df:pd.DataFrame, text:dict) -> go.Figure:
         shapes=shapes, annotations=annotations, **layout)
     return fig
 
-parser = argparse.ArgumentParser(description="Draw the explainer figure of the 0 - 100 score in Dutch and English")
+parser = argparse.ArgumentParser(description="Draw the explainer figure of the 0 - 100 score in Dutch, English and French")
 parser.add_argument('--output', default='pictures/score_explainer', help="Output path without extension (default: pictures/score_explainer)")
 parser.add_argument('--html', action='store_true', help="Also write an interactive html per language")
 

@@ -1,6 +1,6 @@
 # Fair club rankings across ages and disciplines
 
-**English** | [Nederlands](README.nl.md)
+**English** | [Nederlands](README.nl.md) | [Français](README.fr.md)
 
 Shooting sports use age categories to keep competition fair. A local club, however, rarely has enough shooters per category to make that work: a handful of pistol shooters and a couple of rifle shooters spread over seven age groups is no competition at all. Without competition there is little reason to join, and without shooters there is no competition.
 
@@ -57,7 +57,7 @@ uv run src/process.py                    # fit the distributions, write the corr
 uv run src/process.py --year 2024        # ranking of a specific year
 uv run src/process.py --no-plots         # skip opening the plotly figures
 uv run src/build_club_sheet.py           # build the club workbook from the correction table (--rows 200, --output <file>)
-uv run src/plot_explainer.py             # draw the explainer figure in English and Dutch (--html for interactive versions)
+uv run src/plot_explainer.py             # draw the explainer figure in English, Dutch and French (--html for interactive versions)
 ```
 
 | `process.py` option | Default | Meaning |
@@ -72,7 +72,7 @@ uv run src/plot_explainer.py             # draw the explainer figure in English 
 | `normalization_tables/LogGamma_CDF_30shots.csv` | Correction table of all disciplines and groups |
 | `BOA <year> Normalized.csv` | All results of that year ranked on their score |
 | `club/Clubklassement St. Michiel.xlsx` | The club workbook |
-| `pictures/score_explainer_en.png`, `pictures/score_explainer_nl.png` | The explainer figure |
+| `pictures/score_explainer_<en, nl, fr>.png` | The explainer figure |
 
 **Yearly update:** add the new BOA results to `input_data/BE_national.csv`, then run `process.py --no-plots`, `build_club_sheet.py` and `plot_explainer.py`.
 

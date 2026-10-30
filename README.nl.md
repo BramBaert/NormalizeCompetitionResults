@@ -1,6 +1,6 @@
 # Een eerlijk clubklassement over leeftijden en disciplines heen
 
-[English](README.md) | **Nederlands**
+[English](README.md) | **Nederlands** | [Français](README.fr.md)
 
 In de schietsport zorgen leeftijdscategorieën voor een eerlijke competitie. Een club heeft echter zelden genoeg schutters per categorie om dat te laten werken: een handvol pistoolschutters en een paar karabijnschutters, verspreid over zeven leeftijdsgroepen, is geen competitie. Zonder competitie is er weinig reden om mee te doen, en zonder schutters is er geen competitie.
 
@@ -57,7 +57,7 @@ uv run src/process.py                    # verdelingen fitten, correctietabel en
 uv run src/process.py --year 2024        # klassement van een bepaald jaar
 uv run src/process.py --no-plots         # de plotly-figuren niet openen
 uv run src/build_club_sheet.py           # het clubrekenblad bouwen uit de correctietabel (--rows 200, --output <bestand>)
-uv run src/plot_explainer.py             # de uitlegfiguur tekenen in het Engels en Nederlands (--html voor interactieve versies)
+uv run src/plot_explainer.py             # de uitlegfiguur tekenen in het Engels, Nederlands en Frans (--html voor interactieve versies)
 ```
 
 | Optie van `process.py` | Standaard | Betekenis |
@@ -72,7 +72,7 @@ uv run src/plot_explainer.py             # de uitlegfiguur tekenen in het Engels
 | `normalization_tables/LogGamma_CDF_30shots.csv` | Correctietabel van alle disciplines en groepen |
 | `BOA <jaar> Normalized.csv` | Alle resultaten van dat jaar gerangschikt op hun score |
 | `club/Clubklassement St. Michiel.xlsx` | Het clubrekenblad |
-| `pictures/score_explainer_en.png`, `pictures/score_explainer_nl.png` | De uitlegfiguur |
+| `pictures/score_explainer_<en, nl, fr>.png` | De uitlegfiguur |
 
 **Jaarlijkse update:** voeg de nieuwe BOA-resultaten toe aan `input_data/BE_national.csv` en voer daarna `process.py --no-plots`, `build_club_sheet.py` en `plot_explainer.py` uit.
 
