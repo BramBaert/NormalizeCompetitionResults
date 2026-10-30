@@ -4,7 +4,7 @@
 
 Dans le tir sportif, les catégories d'âge garantissent une compétition équitable. Un club local compte toutefois rarement assez de tireurs par catégorie pour que cela fonctionne : une poignée de tireurs au pistolet et quelques tireurs à la carabine, répartis sur sept groupes d'âge, ne font pas une compétition. Sans compétition, peu de raisons de participer, et sans tireurs, pas de compétition.
 
-Ce projet supprime les catégories d'âge dans les compétitions de club **sans rendre la comparaison injuste**. Il s'appuie sur des années de résultats du championnat de Belgique pour tenir compte de l'âge, et même de la différence entre carabine et pistolet à air comprimé, afin que tous les membres du club s'affrontent dans un seul classement.
+Ce projet propose de laisser tomber les catégories d'âge dans les compétitions de club **sans rendre la comparaison injuste**. Il s'appuie sur des années de résultats du championnat de Belgique pour tenir compte de l'âge, et même de la différence entre carabine et pistolet à air comprimé, afin que tous les membres d'un club puissent s'affronter dans un seul classement.
 
 ## L'idée : un score sur 100
 
@@ -12,7 +12,7 @@ Chaque résultat est converti en score : *imaginez 100 tireurs de votre discipli
 
 ![Deux tireurs d'exemple sur les distributions réelles du BOA](pictures/score_explainer_fr.png?raw=true)
 
-Le tireur A fait 295,0 à la carabine en Senior 1 et bat 57 tireurs sur 100 de ce groupe. Le tireur B fait 268 au pistolet en Senior 2 : 27 points de moins, mais meilleur que 86 tireurs sur 100 de ce groupe. **Au classement du club, B termine devant A.**
+Le tireur A fait 590,0 à la carabine en Senior 1 et bat 57 tireurs sur 100 de ce groupe. Le tireur B fait 536 au pistolet en Senior 2 : 54 points de moins, mais meilleur que 86 tireurs sur 100 de ce groupe. **Au classement du club, B termine devant A.**
 
 Remarquez à quel point l'échelle du score est irrégulière par rapport aux points : au milieu d'un groupe, là où les tireurs se bousculent, quelques points suffisent pour en dépasser beaucoup ; en bas, chaque place coûte beaucoup de points.
 
@@ -41,7 +41,7 @@ Cadets, juniors, seniors et vétérans des deux disciplines atteignent tous le s
 
 ### Classement de club dans un tableur
 
-`club/Clubklassement St. Michiel.xlsx` est un classement prêt à l'emploi pour une saison de club de 10 compétitions de 30 coups dont les 5 meilleures comptent. Il fonctionne dans Excel, LibreOffice Calc et Google Sheets, sans macros. Le classeur est en néerlandais (le club est flamand) :
+`club/Clubklassement St. Michiel.xlsx` est une proposition de classement, préparée pour le format de la compétition de club de St. Michiel Roeselare : une saison de 10 compétitions de 30 coups dont les 5 meilleures comptent. Il fonctionne dans Excel, LibreOffice Calc et Google Sheets, sans macros. Utilisez-le comme exemple : un autre format demande des adaptations dans `src/build_club_sheet.py` (et une table de correction pour un autre nombre de coups). Le classeur est en néerlandais (le club est flamand) :
 
 - **Uitleg** : les paramètres (saison, nombre de compétitions qui comptent) et le mode d'emploi.
 - **Resultaten** : par tireur le nom, la discipline, la catégorie et les résultats. Le score (« op 100 schutters », sur 100 tireurs) est calculé pour chaque résultat.
@@ -58,6 +58,7 @@ uv run src/process.py --year 2024        # classement d'une année donnée
 uv run src/process.py --no-plots         # ne pas ouvrir les figures plotly
 uv run src/build_club_sheet.py           # construire le classeur du club à partir de la table de correction (--rows 200, --output <fichier>)
 uv run src/plot_explainer.py             # dessiner la figure explicative en anglais, néerlandais et français (--html pour des versions interactives)
+uv run src/build_poster.py               # affiche A4 en néerlandais et en français dans poster/ (imprimée avec Microsoft Edge)
 ```
 
 | Option de `process.py` | Défaut | Signification |
@@ -96,7 +97,7 @@ Chaque discipline et chaque groupe d'âge est traité séparément, en quatre é
 
 ### Étape 1 : le même nombre de coups
 
-Les catégories tirent 30, 40 ou 60 coups, une compétition de club 30. Tous les résultats sont d'abord ramenés au format du club (un résultat de 600 sur 60 coups compte pour 300), pour que la table s'applique directement aux résultats du club.
+Les catégories tirent 30, 40 ou 60 coups, une compétition de club 30. Tous les résultats sont d'abord ramenés au format du club (un résultat de 600 sur 60 coups compte pour 300), pour que la table s'applique directement aux résultats du club. Le score ne dépend pas de cette conversion : 590,0 sur 60 coups et 295,0 sur 30 coups obtiennent tous deux 57. C'est pourquoi les figures montrent les points habituels sur 60 coups.
 
 ### Étape 2 : dames et messieurs ensemble
 

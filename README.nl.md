@@ -4,7 +4,7 @@
 
 In de schietsport zorgen leeftijdscategorieën voor een eerlijke competitie. Een club heeft echter zelden genoeg schutters per categorie om dat te laten werken: een handvol pistoolschutters en een paar karabijnschutters, verspreid over zeven leeftijdsgroepen, is geen competitie. Zonder competitie is er weinig reden om mee te doen, en zonder schutters is er geen competitie.
 
-Dit project schaft de leeftijdscategorieën af in de clubcompetitie **zonder dat de vergelijking oneerlijk wordt**. Het gebruikt jaren aan resultaten van het Belgisch kampioenschap om rekening te houden met de leeftijd, en zelfs met het verschil tussen luchtkarabijn en luchtpistool, zodat alle leden in één klassement tegen elkaar strijden.
+Dit project stelt voor om de leeftijdscategorieën in de clubcompetitie los te laten **zonder dat de vergelijking oneerlijk wordt**. Het gebruikt jaren aan resultaten van het Belgisch kampioenschap om rekening te houden met de leeftijd, en zelfs met het verschil tussen luchtkarabijn en luchtpistool, zodat alle leden van een club in één klassement tegen elkaar kunnen strijden.
 
 ## Het idee: een score op 100
 
@@ -12,7 +12,7 @@ Elk resultaat wordt omgerekend naar een score: *stel dat er 100 schutters van jo
 
 ![Twee voorbeeldschutters op de echte BOA-verdelingen](pictures/score_explainer_nl.png?raw=true)
 
-Schutter A schiet 295,0 met de luchtkarabijn bij senioren 1 en verslaat 57 van de 100 schutters uit die groep. Schutter B schiet 268 met het luchtpistool bij senioren 2: 27 punten minder, maar beter dan 86 van de 100 uit die groep. **In het clubklassement eindigt B voor A.**
+Schutter A schiet 590,0 met de luchtkarabijn bij senioren 1 en verslaat 57 van de 100 schutters uit die groep. Schutter B schiet 536 met het luchtpistool bij senioren 2: 54 punten minder, maar beter dan 86 van de 100 uit die groep. **In het clubklassement eindigt B voor A.**
 
 Merk op hoe ongelijk de score-schaal is tegenover de punten: in het drukke midden van een groep steek je met een paar punten veel schutters voorbij, onderaan kost elke plaats veel punten.
 
@@ -41,7 +41,7 @@ Cadetten, junioren, senioren en veteranen van beide disciplines halen allemaal d
 
 ### Clubklassement in een rekenblad
 
-`club/Clubklassement St. Michiel.xlsx` is een kant-en-klaar klassement voor een clubseizoen van 10 wedstrijden van 30 schoten waarvan de beste 5 tellen. Het werkt in Excel, LibreOffice Calc en Google Sheets en bevat geen macro's.
+`club/Clubklassement St. Michiel.xlsx` is een voorstel van klassement, opgesteld voor het formaat van de clubcompetitie van St. Michiel Roeselare: een seizoen van 10 wedstrijden van 30 schoten waarvan de beste 5 tellen. Het werkt in Excel, LibreOffice Calc en Google Sheets en bevat geen macro's. Gebruik het als voorbeeld: een ander formaat vraagt aanpassingen in `src/build_club_sheet.py` (en een correctietabel voor een ander aantal schoten).
 
 - **Uitleg**: instellingen (seizoen, aantal tellende wedstrijden) en de handleiding.
 - **Resultaten**: per schutter de naam, discipline, categorie en resultaten. Voor elk resultaat wordt de score ("op 100 schutters") berekend.
@@ -58,6 +58,7 @@ uv run src/process.py --year 2024        # klassement van een bepaald jaar
 uv run src/process.py --no-plots         # de plotly-figuren niet openen
 uv run src/build_club_sheet.py           # het clubrekenblad bouwen uit de correctietabel (--rows 200, --output <bestand>)
 uv run src/plot_explainer.py             # de uitlegfiguur tekenen in het Engels, Nederlands en Frans (--html voor interactieve versies)
+uv run src/build_poster.py               # A4-affiche in het Nederlands en Frans in poster/ (afgedrukt met Microsoft Edge)
 ```
 
 | Optie van `process.py` | Standaard | Betekenis |
@@ -96,7 +97,7 @@ Elke discipline en leeftijdsgroep wordt apart behandeld, in vier stappen.
 
 ### Stap 1: hetzelfde aantal schoten
 
-De categorieën schieten 30, 40 of 60 schoten, een clubwedstrijd 30. Alle resultaten worden eerst omgerekend naar het clubformaat (een resultaat van 600 op 60 schoten telt als 300), zodat de tabel rechtstreeks op clubresultaten werkt.
+De categorieën schieten 30, 40 of 60 schoten, een clubwedstrijd 30. Alle resultaten worden eerst omgerekend naar het clubformaat (een resultaat van 600 op 60 schoten telt als 300), zodat de tabel rechtstreeks op clubresultaten werkt. De score hangt niet af van die omrekening: 590,0 op 60 schoten en 295,0 op 30 schoten scoren allebei 57. Daarom tonen de figuren de vertrouwde punten op 60 schoten.
 
 ### Stap 2: dames en heren samen
 

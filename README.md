@@ -4,7 +4,7 @@
 
 Shooting sports use age categories to keep competition fair. A local club, however, rarely has enough shooters per category to make that work: a handful of pistol shooters and a couple of rifle shooters spread over seven age groups is no competition at all. Without competition there is little reason to join, and without shooters there is no competition.
 
-This project removes the age categories from club competitions **without making the comparison unfair**. It uses years of Belgian national championship results to account for age, and even for the difference between air rifle and air pistol, so every member of the club can compete in one ranking.
+This project proposes to drop the age categories in club competitions **without making the comparison unfair**. It uses years of Belgian national championship results to account for age, and even for the difference between air rifle and air pistol, so every member of a club could compete in one ranking.
 
 ## The idea: a score out of 100
 
@@ -12,7 +12,7 @@ Every result is converted to a score: *imagine 100 shooters of your own discipli
 
 ![Two example shooters on the real BOA distributions](pictures/score_explainer_en.png?raw=true)
 
-Shooter A shoots 295.0 with the air rifle in seniors 1 and beats 57 out of 100 shooters of that group. Shooter B shoots 268 with the air pistol in seniors 2: 27 points fewer, but better than 86 out of 100 of that group. **In the club ranking, B finishes above A.**
+Shooter A shoots 590.0 with the air rifle in seniors 1 and beats 57 out of 100 shooters of that group. Shooter B shoots 536 with the air pistol in seniors 2: 54 points fewer, but better than 86 out of 100 of that group. **In the club ranking, B finishes above A.**
 
 Note how uneven the score scale is compared with the points: in the crowded middle of a group a few points move you past many shooters, at the bottom it takes a lot of points to climb.
 
@@ -41,7 +41,7 @@ Cadets, juniors, seniors and veterans of both disciplines all reach the top. The
 
 ### Club ranking workbook
 
-`club/Clubklassement St. Michiel.xlsx` is a ready-to-use ranking for a club season of 10 competitions of 30 shots where the best 5 count. It works in Excel, LibreOffice Calc and Google Sheets and has no macros.
+`club/Clubklassement St. Michiel.xlsx` is a proposed ranking workbook, drafted for the club competition format of St. Michiel Roeselare: a season of 10 competitions of 30 shots where the best 5 count. It works in Excel, LibreOffice Calc and Google Sheets and has no macros. Use it as an example: other formats need changes to `src/build_club_sheet.py` (and a correction table for another shot count).
 
 - **Uitleg**: settings (season, number of counting competitions) and instructions in Dutch.
 - **Resultaten**: per shooter the name, discipline, category and results. The score ("op 100 schutters") is calculated for every result.
@@ -58,6 +58,7 @@ uv run src/process.py --year 2024        # ranking of a specific year
 uv run src/process.py --no-plots         # skip opening the plotly figures
 uv run src/build_club_sheet.py           # build the club workbook from the correction table (--rows 200, --output <file>)
 uv run src/plot_explainer.py             # draw the explainer figure in English, Dutch and French (--html for interactive versions)
+uv run src/build_poster.py               # A4 poster in Dutch and French in poster/ (printed with Microsoft Edge)
 ```
 
 | `process.py` option | Default | Meaning |
@@ -96,7 +97,7 @@ Every discipline and age group is handled separately, in four steps.
 
 ### Step 1: the same number of shots
 
-The categories shoot 30, 40 or 60 shots, a club competition 30. All results are scaled to the club format first (a 60-shot result of 600 counts as 300), so the table can be used directly on club results.
+The categories shoot 30, 40 or 60 shots, a club competition 30. All results are scaled to the club format first (a 60-shot result of 600 counts as 300), so the table can be used directly on club results. The score does not depend on this scaling: 590.0 on 60 shots and 295.0 on 30 shots both score 57. That is why the figures show the familiar 60-shot points.
 
 ### Step 2: ladies and men together
 

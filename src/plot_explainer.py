@@ -4,6 +4,8 @@
 
     The distributions are fitted like process.py does (loggamma on the results normalized to 30 shots,
     unisex groups) and the score uses the exported CDF correction table, exactly like the club workbook.
+    The points are shown on <C_DISPLAY_SHOTS> shots, the national format of the shown groups: scaling a
+    result and the table by the same factor leaves the score unchanged.
 
     Usage: uv run src/plot_explainer.py [--output pictures/score_explainer] [--html]
            writes <output>_nl.png, <output>_en.png and <output>_fr.png
@@ -14,21 +16,22 @@ import pandas as pd
 import plotly.graph_objects as go
 import scipy.stats
 
-C_SHOT_COUNT = 30
+C_SHOT_COUNT = 30           # shot count of the correction table
+C_DISPLAY_SHOTS = 60        # shot count of the points shown in the figure
 C_SCORE_SCALE = 100
 SHOTS = {"DUV": 30, "BEN": 30, "CAD": 40}  # every other category shoots 60
 GROUPS = {"D1": "D1 & S1", "S1": "D1 & S1", "D2": "D2 & S2", "S2": "D2 & S2"}
 
-PANELS = [  # discipline, group, color, x range, bin size, example shooter, result
-    ("LK", "D1 & S1", "#636EFA", (228, 320), 2, "A", 295.0),
-    ("LP", "D2 & S2", "#EF553B", (165, 285), 3, "B", 268),
+PANELS = [  # discipline, group, color, x range, bin size, example shooter, result (all in <C_DISPLAY_SHOTS> shot points)
+    ("LK", "D1 & S1", "#636EFA", (456, 640), 4, "A", 590.0),
+    ("LP", "D2 & S2", "#EF553B", (330, 570), 6, "B", 536),
 ]
 TEXT = {
     "nl": dict(
         separators=",.",
         panel={"LK": "Luchtkarabijn · senioren 1 (21 - 49 jaar)", "LP": "Luchtpistool · senioren 2 (50 - 59 jaar)"},
         discipline={"LK": "LK", "LP": "LP"},
-        source="BOA-resultaten omgerekend naar {shots} schoten, n = {n}",
+        source="BOA-resultaten op {shots} schoten, n = {n}",
         points="punten",
         scale="op 100<br>schutters",
         shooter="Schutter {who}",
@@ -40,7 +43,7 @@ TEXT = {
         separators=".,",
         panel={"LK": "Air rifle · seniors 1 (21 - 49 years)", "LP": "Air pistol · seniors 2 (50 - 59 years)"},
         discipline={"LK": "rifle", "LP": "pistol"},
-        source="Belgian championship (BOA) results scaled to {shots} shots, n = {n}",
+        source="Belgian championship (BOA) results, {shots} shots, n = {n}",
         points="points",
         scale="out of 100<br>shooters",
         shooter="Shooter {who}",
@@ -50,9 +53,9 @@ TEXT = {
         rankingLine="{result} points → <b>{score}</b> out of 100"),
     "fr": dict(
         separators=", ",
-        panel={"LK": "Carabine à air comprimé · Senior 1 (21 - 49 ans)", "LP": "Pistolet à air comprimé · Senior 2 (50 - 59 ans)"},
+        panel={"LK": "Carabine 10 m · Senior 1 (21 - 49 ans)", "LP": "Pistolet 10 m · Senior 2 (50 - 59 ans)"},
         discipline={"LK": "carabine", "LP": "pistolet"},
-        source="Résultats du championnat de Belgique (BOA) ramenés à {shots} coups, n = {n}",
+        source="Résultats BOA sur {shots} coups, n = {n}",
         points="points",
         scale="sur 100<br>tireurs",
         shooter="Tireur {who}",
@@ -99,16 +102,20 @@ def formatResult(discipline:str, result:float, text:dict) -> str:
 def buildFigure(df:pd.DataFrame, text:dict) -> go.Figure:
     fig = go.Figure()
     layout, shapes, annotations, ranking = {}, [], [], []
+    k = C_SHOT_COUNT / C_DISPLAY_SHOTS  # from shown points to the points of the fit and the table
     for n, (dis, group, color, (lo, hi), binSize, who, result) in enumerate(PANELS):
         ax, rulerAx = ("" if n == 0 else str(n + 1)), str(n + 3)
-        data = df.loc[(df['Discipline'] == dis) & (df['Group'] == group), 'Result30'].to_numpy(dtype=float)
-        params = scipy.stats.loggamma.fit(data)
-        score = scoreFunction(dis, group)
+        fitData = df.loc[(df['Discipline'] == dis) & (df['Group'] == group), 'Result30'].to_numpy(dtype=float)
+        data = fitData / k
+        params = scipy.stats.loggamma.fit(fitData)
+        tableScore = scoreFunction(dis, group)
+        score = lambda r: tableScore(np.asarray(r) * k)
+        density = lambda x: scipy.stats.loggamma.pdf(np.asarray(x) * k, *params) * k
         xs = np.linspace(lo, hi, 600)
-        pdf = scipy.stats.loggamma.pdf(xs, *params)
+        pdf = density(xs)
         yMax = max(pdf.max(), np.histogram(data, bins=np.arange(lo, hi + binSize, binSize), density=True)[0].max()) * 1.12
         resultScore = f"{float(score(result)):.0f}"
-        resultPdf = float(scipy.stats.loggamma.pdf(result, *params))
+        resultPdf = float(density(result))
         shown, shooter = formatResult(dis, result, text), text["shooter"].format(who=who)
         ranking.append((float(score(result)), shooter, dis, shown, resultScore, color))
 
@@ -132,7 +139,7 @@ def buildFigure(df:pd.DataFrame, text:dict) -> go.Figure:
         scores = score(grid)
         ticks = [(float(grid[np.argmax(scores >= s)]), str(s)) for s in range(10, C_SCORE_SCALE + 1, 10) if scores.max() >= s]
         bottom = Y_DOMAINS[n][0]
-        layout[f"xaxis{ax}"] = dict(domain=X_DOMAIN, range=[lo, hi], anchor=f"y{ax}", dtick=10, showgrid=False,
+        layout[f"xaxis{ax}"] = dict(domain=X_DOMAIN, range=[lo, hi], anchor=f"y{ax}", dtick=20, showgrid=False,
                                     ticks="outside", showline=True, linecolor="#444", tickfont=dict(size=15, color=INK))
         layout[f"yaxis{ax}"] = dict(domain=Y_DOMAINS[n], range=[0, yMax], anchor=f"x{ax}", showticklabels=False,
                                     gridcolor="#ebf0f8", zeroline=False)
@@ -143,7 +150,7 @@ def buildFigure(df:pd.DataFrame, text:dict) -> go.Figure:
         annotations += [
             dict(text=f"<b>{text['panel'][dis]}</b>", x=X_DOMAIN[0], y=Y_DOMAINS[n][1] + 0.03, xref="paper", yref="paper",
                  xanchor="left", showarrow=False, font=dict(size=19, color=color)),
-            dict(text=text["source"].format(shots=C_SHOT_COUNT, n=len(data)), x=X_DOMAIN[1], y=Y_DOMAINS[n][1] + 0.03,
+            dict(text=text["source"].format(shots=C_DISPLAY_SHOTS, n=len(data)), x=X_DOMAIN[1], y=Y_DOMAINS[n][1] + 0.03,
                  xref="paper", yref="paper", xanchor="right", showarrow=False, font=dict(size=13, color=MUTED)),
             dict(text=text["points"], x=X_DOMAIN[0] - 0.008, y=bottom - 0.022, xref="paper", yref="paper",
                  xanchor="right", showarrow=False, font=dict(size=14, color=MUTED)),
