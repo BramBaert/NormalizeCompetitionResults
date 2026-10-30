@@ -9,9 +9,18 @@ from distfit import distfit
 C_USE_SHOT_COUNT_NORMALIZED = 1
 C_NORMALIZED_SHOT_COUNT = 30
 C_USE_UNISEX = 1
+C_SCORE_SCALE = 100
 
-parser = argparse.ArgumentParser(description="Fit per category distributions and normalize the results of a year")
-parser.add_argument('--discipline', choices=['LK','LP'], default='LK', help="Discipline to process (default: LK)")
+parser = argparse.ArgumentParser(description="Fit per discipline and category distributions and normalize the results of a year")
+parser.add_argument('--use-shot-count-normalized', type=int, choices=[0,1], default=C_USE_SHOT_COUNT_NORMALIZED,
+                    help=f"Fit on results normalized to --normalized-shot-count shots (default: {C_USE_SHOT_COUNT_NORMALIZED})")
+parser.add_argument('--normalized-shot-count', type=int, default=C_NORMALIZED_SHOT_COUNT,
+                    help=f"Number of shots to normalize the results to, e.g. the shot count of a club competition (default: {C_NORMALIZED_SHOT_COUNT})")
+parser.add_argument('--use-unisex', type=int, choices=[0,1], default=C_USE_UNISEX,
+                    help=f"Merge the ladies and men categories of the same age (default: {C_USE_UNISEX})")
+parser.add_argument('--score-scale', type=float, default=C_SCORE_SCALE,
+                    help=f"Scale of the normalized score: where a result falls within its own discipline and category "
+                         f"if that group had <score-scale> shooters (default: {C_SCORE_SCALE})")
 parser.add_argument('--year', type=int, help="Year to create the normalized ranking for (default: latest year in the data)")
 parser.add_argument('--no-plots', action='store_true', help="Don't open the plotly figures")
 args = parser.parse_args()
@@ -51,19 +60,22 @@ def normalize_shots(row,targetShots=60):
         case _:
             return row['Result']*targetShots/60
 
-def fit_distribution(categoryToFit,dfFit:pd.DataFrame,dfHist:pd.DataFrame):
+def fit_distribution(disciplineToFit,categoryToFit,dfFit:pd.DataFrame,dfHist:pd.DataFrame):
     ''' This function uses distfit to try and find the distribution that best maps to the data
         Input:
-            categoryToFit   : A string describing the category from dfStats to use as data input
+            disciplineToFit : A string describing the discipline from df to use as data input
+            categoryToFit   : A string describing the category from df to use as data input
             dfFit           : DataFrame (empty or the result of a previous fit_distribution)
             dfHist          : DataFrame (empty or the result of a previous fit_distribution)
         Return:
             dfFit           : The input DataFrame appended with the distfit.summary dataFrame
-                              for the respective category with an additional column 'Category' 
-            dfHist          : The input DataFrame appended with the histogram data for the 
+                              for the respective category with an additional column 'Category'
+                              holding '<discipline> <category>'
+            dfHist          : The input DataFrame appended with the histogram data for the
                               respective category with an additional column 'Category'
     '''
-    X = np.array(df.loc[df['Category'] == categoryToFit][resultKey],dtype='float32')
+    X = np.array(df.loc[(df['Discipline'] == disciplineToFit) & (df['Category'] == categoryToFit)][resultKey],dtype='float32')
+    categoryToFit = f"{disciplineToFit} {categoryToFit}"
     #X=np.array(dfStats.loc[dfStats['Category'] == categoryToFit][resultKey].values[0],dtype='float32')
     #print(X)
 
@@ -117,17 +129,24 @@ def fitGenExtremeDist(row):
     '''
     return(scipy.stats.genextreme.fit(row[resultKey]))
 
-def determineCorrection(row, refCat, algo):
-    ''' This function returns the Correction factor between categories
+def scoreLinSpace(size:int):
+    ''' This function returns the score scale matching the 1% - 99% linear spacing of the distributions
         Input:
-            row:    A row from a dataFrame consisting of at least two columns 'Result'
-                    and 'Result60Shots'. The global variable resultKey will be used to
-                    determine which of the two to select
-            refCat: The reference category to use
+            size:   The number of points
+        Return:
+            The linear spacing from 1% to 99% of the score scale
+    '''
+    return np.linspace(0.01, 0.99, size) * args.score_scale
+
+def determineCorrection(row, algo):
+    ''' This function returns the Correction factor between a category and the score scale
+        Input:
+            row:    A row from dfStats holding the '<algo>LinSpace' column
+            algo:   The distribution algorithm to use
         Return:
             A list of the correction factors per point for the respective category
     '''
-    return((dfStats.loc[dfStats['Category'] == refCat][f'{algo}LinSpace'].values[0])/row[f'{algo}LinSpace'])
+    return(scoreLinSpace(len(row[f'{algo}LinSpace']))/row[f'{algo}LinSpace'])
 
 def unisex(val):
     ''' This function converts the category label to a uni-sex label
@@ -171,12 +190,14 @@ def explodeStatsFunction(dataFrame:pd.DataFrame, linSpace:str, algo:str, name:st
     return localDf
 
 def printLineHistogram(algoData:pd.DataFrame,
+                       discipline:str,
                        lines:list,
                        title:str="",
                        yaxis_title:str="",
                        histnorm:str='probability density'):
-    # Strip the df to the lines we want to print
-    localDf = algoData.loc[algoData["algoName"].isin(lines)]
+    # Strip the df to the discipline and the lines we want to print
+    localDf = algoData.loc[(algoData["algoName"].isin(lines)) & (algoData["Discipline"] == discipline)]
+    dfStatsDiscipline = dfStats.loc[dfStats['Discipline'] == discipline]
 
     # Create subplots using Plotly Express
     fig = px.line(localDf, x='linSpace', y='algoVal', color="algoName", facet_col='Category', facet_col_wrap=3,color_discrete_sequence=['red','green','blue'],
@@ -204,9 +225,9 @@ def printLineHistogram(algoData:pd.DataFrame,
     
     #fig.print_grid()
 
-    dfStats_exploded_result = dfStats.explode([resultKey]).reset_index(drop=True)
-    categoryCount = len(dfStats['Category'].unique())
-    for count, cat in enumerate(dfStats['Category'].unique()):
+    dfStats_exploded_result = dfStatsDiscipline.explode([resultKey]).reset_index(drop=True)
+    categoryCount = len(dfStatsDiscipline['Category'].unique())
+    for count, cat in enumerate(dfStatsDiscipline['Category'].unique()):
         #rowVal = int((categoryCount-count+3)/3)
         rowVal = int(categoryCount/3) - int(count/3)
         if categoryCount%3:
@@ -218,15 +239,14 @@ def printLineHistogram(algoData:pd.DataFrame,
     #fig.data = fig.data[::-1]
     showFigure(fig)
 
-def normalizeResult(row, resultKey:str, correctionTable:pd.DataFrame, refCat:str = "S1", refDiscipline:str = "LK"):
+def normalizeResult(row, resultKey:str, correctionTable:pd.DataFrame, refCol:str = "Score"):
     """ This function will return the normalized result of the value in resultKey column for the respective Discipline and Category
     Input:
         row:              A row from a dataframe containing at least the column 'Category', 'Discipline' and the provided resultKey
         resultKey:        The column to pick, the result to normalize, from
-        correctionTable:  A table consisting of a column per Category as well as Discipline column. The rows are how to go from \
-                          a result in one category to the 'normalized' result of another category
-        refCat:           The Category string to be used to find the reference category where to normalize towards
-        refDiscipline     The Discipline string to be used to find the reference discipline where to normalize towards
+        correctionTable:  A table consisting of a column per Category, the reference column as well as Discipline column. The rows \
+                          are how to go from a result in one category to the 'normalized' result of the reference column
+        refCol:           The column of correctionTable to normalize towards (the linear spaced score scale)
     Return:
         The Normalized result
 
@@ -239,18 +259,19 @@ def normalizeResult(row, resultKey:str, correctionTable:pd.DataFrame, refCat:str
     """
     disciplineCorrectionDf = correctionTable.loc[correctionTable['Discipline'] == row['Discipline']]
     rowCorrection = disciplineCorrectionDf.iloc[(disciplineCorrectionDf[row['Category']]-row[resultKey]).abs().argsort()[:1]]
-    return row[resultKey]*(rowCorrection[refCat]/rowCorrection[row['Category']]).values[0]
+    return row[resultKey]*(rowCorrection[refCol]/rowCorrection[row['Category']]).values[0]
 
-def normalizeResultCDF(row, resultKey:str, correctionTable:pd.DataFrame, refCat:str = "S1", refDiscipline:str = "LK"):
+def normalizeResultCDF(row, resultKey:str, correctionTable:pd.DataFrame, scale:float = 100):
     """ This function will return the normalized result of the value in resultKey column for the respective Discipline and Category
+        The normalized result is the result multiplied by the factor <scale> x CDF / points of the nearest point in the table, so
+        within the 1% - 99% range of the table it is where the result falls within its own discipline and category if that group
+        had <scale> shooters. Outside that range the factor of the edge is used, an exceptional result can thus exceed <scale>.
     Input:
         row:              A row from a DataFrame containing at least the column 'Category', 'Discipline' and the provided resultKey
         resultKey:        The column to pick, the result to normalize, from
-        correctionTable:  A table consisting of a column per Category as well as Discipline column. Each row holds a tuple per \
-                          Category containing the result in the first element and the CDF value for that result in the second \
-                          element.
-        refCat:           The Category string to be used to find the reference category where to normalize towards 
-        refDiscipline     The Discipline string to be used to find the reference discipline where to normalize towards
+        correctionTable:  A table consisting of a column per Category as well as Discipline column. Each row holds the points \
+                          in the Category column and the CDF value for those points in the <Category>_CDF column.
+        scale:            The score scale
     Return:
         The Normalized result
 
@@ -264,29 +285,26 @@ def normalizeResultCDF(row, resultKey:str, correctionTable:pd.DataFrame, refCat:
     """
     disciplineCorrectionDf = correctionTable.loc[correctionTable['Discipline'] == row['Discipline']]
     fromRow = disciplineCorrectionDf.iloc[(disciplineCorrectionDf[row['Category']]-row[resultKey]).abs().argsort()[:1]]
-    toRow   = disciplineCorrectionDf.iloc[(disciplineCorrectionDf[f"{refCat}_CDF"]-fromRow[f"{row['Category']}_CDF"].values[0]).abs().argsort()[:1]]
-    return round(row[resultKey]*(toRow[refCat].values[0]/fromRow[row['Category']].values[0]),2)
+    return round(row[resultKey]*scale*fromRow[f"{row['Category']}_CDF"].values[0]/fromRow[row['Category']].values[0],1)
 
 # Import the data
 df = pd.read_csv('input_data/BE_national.csv', encoding='iso-8859-1')
-df = df.loc[(df['Discipline'] == args.discipline) & (df['Anomaly'] == "No")]
+df = df.loc[df['Anomaly'] == "No"]
 #print(df['Category'].value_counts())
-#df = df.loc[df['Anomaly'] == "No"]
 print(f"Total number of valid entries: {len(df)}")
 
 
 # Make the categories uni-sex
-if C_USE_UNISEX:
+if args.use_unisex:
     df['Category'] = df['Category'].apply(unisex)
     categoryOrder = ["DUV","BEN","CAD","JUN","D1 & S1","D2 & S2", "D3 & S3"]
 else:
     categoryOrder = ["DUV","BEN","CAD","JD","JH","D1","S1","D2","S2","D3","S3"]
 
-# Normalize all shots to the target number of competition shots TODO make the targetShots a commandline argument
-df['ResultNormalizedShots'] = df.apply(lambda row: normalize_shots(row,C_NORMALIZED_SHOT_COUNT), axis=1)
+# Normalize all shots to the target number of competition shots
+df['ResultNormalizedShots'] = df.apply(lambda row: normalize_shots(row,args.normalized_shot_count), axis=1)
 
-# TODO make this depend on a commandline argument 
-if C_USE_SHOT_COUNT_NORMALIZED: 
+if args.use_shot_count_normalized:
     resultKey = 'ResultNormalizedShots'
 else:
     resultKey = 'Result'
@@ -294,11 +312,11 @@ else:
 #fit_distribution_old("JH")
 #plt.show()
 
-# Run distribution fitting over all categories
+# Run distribution fitting over all disciplines and categories
 dfFit = pd.DataFrame()
 dfHist = pd.DataFrame()
-for cat in df['Category'].unique():
-    dfFit,dfHist = fit_distribution(cat,dfFit,dfHist)
+for dis, cat in df[['Discipline','Category']].drop_duplicates().itertuples(index=False):
+    dfFit,dfHist = fit_distribution(dis,cat,dfFit,dfHist)
 
 # Calculate the overall best algorithm
 sum_scores = dfFit.groupby('name')['score'].sum().reset_index()
@@ -411,24 +429,22 @@ dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'LogGammaLinSpace','LogG
 dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'GenExtremeLinSpace','GenExtremePdf',"GenExtremePdf")], ignore_index=True)
 dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'GenExtremeLinSpace','GenExtremeCdf',"GenExtremeCdf")], ignore_index=True)
 
-disciplineName = {"LK": "Air Rifle", "LP": "Air Pistol"}[args.discipline]
-printLineHistogram(dfAlgo,['betaCdf','logGammaCdf','GenExtremeCdf'],title=f"{disciplineName}: Cumulative Density Function",histnorm='probability')
-printLineHistogram(dfAlgo,['betaPdf','logGammaPdf','GenExtremePdf'],title=f"{disciplineName}: Probability Density Function")
+disciplineNames = {"LK": "Air Rifle", "LP": "Air Pistol"}
+for dis in dfStats['Discipline'].unique():
+    printLineHistogram(dfAlgo,dis,['betaCdf','logGammaCdf','GenExtremeCdf'],title=f"{disciplineNames.get(dis,dis)}: Cumulative Density Function",histnorm='probability')
+    printLineHistogram(dfAlgo,dis,['betaPdf','logGammaPdf','GenExtremePdf'],title=f"{disciplineNames.get(dis,dis)}: Probability Density Function")
 
-if(1 == C_USE_UNISEX):
-    refCat = "D1 & S1"
-else:
-    refCat = "S1"
-dfStats['LogGammaCorrection']   = dfStats.apply(lambda row: determineCorrection(row,refCat,"LogGamma"),axis=1)
-dfStats['BetaCorrection']       = dfStats.apply(lambda row: determineCorrection(row,refCat,"Beta"),axis=1)
-dfStats['GenExtremeCorrection'] = dfStats.apply(lambda row: determineCorrection(row,refCat,"GenExtreme"),axis=1)
+dfStats['LogGammaCorrection']   = dfStats.apply(lambda row: determineCorrection(row,"LogGamma"),axis=1)
+dfStats['BetaCorrection']       = dfStats.apply(lambda row: determineCorrection(row,"Beta"),axis=1)
+dfStats['GenExtremeCorrection'] = dfStats.apply(lambda row: determineCorrection(row,"GenExtreme"),axis=1)
 
 dfCorrection = explodeStatsFunction(dfStats,'LogGammaLinSpace','LogGammaCorrection',"LogGamma")
 dfCorrection = pd.concat([dfCorrection,explodeStatsFunction(dfStats,'BetaLinSpace','BetaCorrection',"Beta")], ignore_index=True)
 dfCorrection = pd.concat([dfCorrection,explodeStatsFunction(dfStats,'GenExtremeLinSpace','GenExtremeCorrection',"GenExtreme")], ignore_index=True)
-fig = px.line(dfCorrection, x='linSpace', y='algoVal', color="algoName", facet_col='Category', facet_col_wrap=3,color_discrete_sequence=['red','green','blue'])
-fig.update_layout(title="Correction factors - Linear Mapping")
-showFigure(fig)
+for dis in dfStats['Discipline'].unique():
+    fig = px.line(dfCorrection.loc[dfCorrection['Discipline'] == dis], x='linSpace', y='algoVal', color="algoName", facet_col='Category', facet_col_wrap=3,color_discrete_sequence=['red','green','blue'])
+    fig.update_layout(title=f"{disciplineNames.get(dis,dis)}: Correction factors - Linear Mapping")
+    showFigure(fig)
 
 '''
 # Creating a new DataFrame with required columns
@@ -441,51 +457,55 @@ print(type(pivot_table))
 print(pivot_table)
 '''
 
+def disciplineStats(dis:str, cat:str, column:str) -> pd.Series:
+    ''' This function returns the exploded <column> of dfStats for a single discipline and category '''
+    return dfStats.loc[(dfStats['Discipline'] == dis) & (dfStats['Category'] == cat)][column].explode(column).reset_index(drop=True)
+
+# The 'Score' column is the score scale, all categories are normalized towards it
 CorrectionTable = pd.DataFrame()
 for dis in dfStats['Discipline'].unique():
     disDf = pd.DataFrame()
     for cat in dfStats.loc[dfStats['Discipline'] == dis]['Category'].unique():
-        disDf[cat] = dfStats.loc[dfStats['Category'] == cat]['LogGammaLinSpace'].explode('LogGammaLinSpace')
+        disDf[cat] = disciplineStats(dis, cat, 'LogGammaLinSpace')
+    disDf['Score'] = scoreLinSpace(len(disDf))
     disDf['Discipline'] = dis
     CorrectionTable = pd.concat([CorrectionTable,disDf],ignore_index=True)
 
 dfNormalized = df.copy(deep=True)
-df['State'] = "Original"
-dfNormalized[resultKey] = dfNormalized.apply(lambda row: normalizeResult(row, resultKey, CorrectionTable, refCat),axis=1)
+dfNormalized['Score'] = dfNormalized.apply(lambda row: normalizeResult(row, resultKey, CorrectionTable, "Score"),axis=1)
 dfNormalized['State'] = "Liniarly Normalized"
-dfCompare = pd.concat([df,dfNormalized],ignore_index=True)
+dfCompare = dfNormalized
 
 CorrectionTable = pd.DataFrame()
 for dis in dfStats['Discipline'].unique():
     disDf = pd.DataFrame()
     for cat in dfStats.loc[dfStats['Discipline'] == dis]['Category'].unique():
-        # Create a tuple (linSpace,CDF) per category
-        #disDf[cat] = list(zip(dfStats.loc[dfStats['Category'] == cat]['LogGammaLinSpace'].explode('LogGammaLinSpace'),dfStats.loc[dfStats['Category'] == cat]["LogGammaCdf"].explode('LogGammaCdf')))
-
         # Ad the linspace and CDF in separate columns
-        disDf[cat]          = dfStats.loc[dfStats['Category'] == cat]['LogGammaLinSpace'].explode('LogGammaLinSpace')
-        disDf[f'{cat}_CDF']  = dfStats.loc[dfStats['Category'] == cat]["LogGammaCdf"].explode('LogGammaCdf')
+        disDf[cat]          = disciplineStats(dis, cat, 'LogGammaLinSpace')
+        disDf[f'{cat}_CDF'] = disciplineStats(dis, cat, 'LogGammaCdf')
     disDf['Discipline'] = dis
     CorrectionTable = pd.concat([CorrectionTable,disDf],ignore_index=True)
 
-# Export the CDF correction table, the points are expressed in <C_NORMALIZED_SHOT_COUNT> shots when C_USE_SHOT_COUNT_NORMALIZED
-shotCount = C_NORMALIZED_SHOT_COUNT if C_USE_SHOT_COUNT_NORMALIZED else "category"
-CorrectionTable.to_csv(f'normalization_tables/{args.discipline}_LogGamma_CDF_{shotCount}shots.csv',index=False)
+# Export the CDF correction table, the points are expressed in <normalized-shot-count> shots when <use-shot-count-normalized>
+shotCount = args.normalized_shot_count if args.use_shot_count_normalized else "category"
+CorrectionTable.to_csv(f'normalization_tables/LogGamma_CDF_{shotCount}shots.csv',index=False)
 
 dfNormalized = df.copy(deep=True)
-df['State'] = "Original"
-dfNormalized[resultKey] = dfNormalized.apply(lambda row: normalizeResultCDF(row, resultKey, CorrectionTable, refCat),axis=1)
+dfNormalized['Score'] = dfNormalized.apply(lambda row: normalizeResultCDF(row, resultKey, CorrectionTable, args.score_scale),axis=1)
 dfNormalized['State'] = "CDF Normalized"
 dfCompare = pd.concat([dfCompare,dfNormalized],ignore_index=True)
 
-fig = px.box(dfCompare,y=resultKey,x='Category',color='State',category_orders={'Category':categoryOrder})
+# With a good fit every category lands around 25 / 50 / 75 % of the score scale
+fig = px.box(dfCompare,y='Score',x='Category',color='State',facet_row='Discipline',category_orders={'Category':categoryOrder})
 fig.update_traces(boxpoints=False, boxmean=True)
-fig.update_layout(title="Comparison between original results and Normalized results")
+for y in (0, 0.25, 0.5, 0.75, 1):
+    fig.add_hline(y=y*args.score_scale, line_dash="dot", line_color="grey")
+fig.update_layout(title=f"Normalized score (0 - {args.score_scale:g}) per discipline and category")
 showFigure(fig)
 
 year = args.year if args.year else df['Year'].max()
-dfRanking = dfCompare[(dfCompare['State'] == "CDF Normalized") & (dfCompare['Year'] == year)].sort_values(resultKey,ascending=False)
+dfRanking = dfCompare[(dfCompare['State'] == "CDF Normalized") & (dfCompare['Year'] == year)].sort_values('Score',ascending=False)
 print(dfRanking.head(n=25))
-dfRanking.to_csv(f'BOA {year} {args.discipline} Normalized.csv',index=False)
+dfRanking.to_csv(f'BOA {year} Normalized.csv',index=False)
 #fig = px.box(dfCompare,y=resultKey,x='Category',facet_col='State')
 #fig.show()
