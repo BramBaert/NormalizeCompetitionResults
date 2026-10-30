@@ -1,3 +1,4 @@
+import argparse
 import pandas as pd
 import plotly.express as px
 import scipy.stats
@@ -5,9 +6,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 from distfit import distfit
 
-C_USE_SHOT_COUNT_NORMALIZED = 0
+C_USE_SHOT_COUNT_NORMALIZED = 1
 C_NORMALIZED_SHOT_COUNT = 30
 C_USE_UNISEX = 1
+
+parser = argparse.ArgumentParser(description="Fit per category distributions and normalize the results of a year")
+parser.add_argument('--discipline', choices=['LK','LP'], default='LK', help="Discipline to process (default: LK)")
+parser.add_argument('--year', type=int, help="Year to create the normalized ranking for (default: latest year in the data)")
+parser.add_argument('--no-plots', action='store_true', help="Don't open the plotly figures")
+args = parser.parse_args()
+
+def showFigure(fig):
+    ''' This function shows the figure unless plots are disabled with --no-plots
+    '''
+    if not args.no_plots:
+        fig.show()
 
 def calculate_result_reversed(row):
     ''' This function reverses the results starting from the maximum result as 0
@@ -203,7 +216,7 @@ def printLineHistogram(algoData:pd.DataFrame,
         fig.add_trace(px.histogram(dfStats_exploded_result.loc[dfStats_exploded_result['Category'] == cat],x=resultKey, histnorm=histnorm, nbins=50,opacity=0.5).data[0],row=rowVal,col=colVal)
     # Show the plot
     #fig.data = fig.data[::-1]
-    fig.show()
+    showFigure(fig)
 
 def normalizeResult(row, resultKey:str, correctionTable:pd.DataFrame, refCat:str = "S1", refDiscipline:str = "LK"):
     """ This function will return the normalized result of the value in resultKey column for the respective Discipline and Category
@@ -256,9 +269,10 @@ def normalizeResultCDF(row, resultKey:str, correctionTable:pd.DataFrame, refCat:
 
 # Import the data
 df = pd.read_csv('input_data/BE_national.csv', encoding='iso-8859-1')
-#df = df.loc[(df['Discipline'] == "LK") & (df['Anomaly'] == "No")]
+df = df.loc[(df['Discipline'] == args.discipline) & (df['Anomaly'] == "No")]
 #print(df['Category'].value_counts())
-df = df.loc[df['Anomaly'] == "No"]
+#df = df.loc[df['Anomaly'] == "No"]
+print(f"Total number of valid entries: {len(df)}")
 
 
 # Make the categories uni-sex
@@ -307,7 +321,7 @@ fig.update_layout(title="Fitting result for different types of distributions",
                     xaxis_title="Distribution",
                     yaxis_title="Fitting score (lower is better)",
                     legend_title="Age category")
-fig.show()
+showFigure(fig)
 
 # Start creation of the per Category statistics DataFrame
 dfStats = df.groupby(['Category', 'Discipline']).agg({'Result': list, 'ResultNormalizedShots': list}).reset_index()
@@ -397,10 +411,9 @@ dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'LogGammaLinSpace','LogG
 dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'GenExtremeLinSpace','GenExtremePdf',"GenExtremePdf")], ignore_index=True)
 dfAlgo = pd.concat([dfAlgo,explodeStatsFunction(dfStats,'GenExtremeLinSpace','GenExtremeCdf',"GenExtremeCdf")], ignore_index=True)
 
-printLineHistogram(dfAlgo.loc[dfAlgo['Discipline'] == "LK"],['betaCdf','logGammaCdf','GenExtremeCdf'],title="Air Rifle: Cumulative Density Function",histnorm='probability')
-printLineHistogram(dfAlgo.loc[dfAlgo['Discipline'] == "LK"],['betaPdf','logGammaPdf','GenExtremePdf'],title="Air Rifle: Probability Density Function")
-printLineHistogram(dfAlgo.loc[dfAlgo['Discipline'] == "LP"],['betaCdf','logGammaCdf','GenExtremeCdf'],title="Air Pistol: Cumulative Density Function",histnorm='probability')
-printLineHistogram(dfAlgo.loc[dfAlgo['Discipline'] == "LP"],['betaPdf','logGammaPdf','GenExtremePdf'],title="Air Pistol: Probability Density Function")
+disciplineName = {"LK": "Air Rifle", "LP": "Air Pistol"}[args.discipline]
+printLineHistogram(dfAlgo,['betaCdf','logGammaCdf','GenExtremeCdf'],title=f"{disciplineName}: Cumulative Density Function",histnorm='probability')
+printLineHistogram(dfAlgo,['betaPdf','logGammaPdf','GenExtremePdf'],title=f"{disciplineName}: Probability Density Function")
 
 if(1 == C_USE_UNISEX):
     refCat = "D1 & S1"
@@ -415,7 +428,7 @@ dfCorrection = pd.concat([dfCorrection,explodeStatsFunction(dfStats,'BetaLinSpac
 dfCorrection = pd.concat([dfCorrection,explodeStatsFunction(dfStats,'GenExtremeLinSpace','GenExtremeCorrection',"GenExtreme")], ignore_index=True)
 fig = px.line(dfCorrection, x='linSpace', y='algoVal', color="algoName", facet_col='Category', facet_col_wrap=3,color_discrete_sequence=['red','green','blue'])
 fig.update_layout(title="Correction factors - Linear Mapping")
-fig.show()
+showFigure(fig)
 
 '''
 # Creating a new DataFrame with required columns
@@ -455,6 +468,10 @@ for dis in dfStats['Discipline'].unique():
     disDf['Discipline'] = dis
     CorrectionTable = pd.concat([CorrectionTable,disDf],ignore_index=True)
 
+# Export the CDF correction table, the points are expressed in <C_NORMALIZED_SHOT_COUNT> shots when C_USE_SHOT_COUNT_NORMALIZED
+shotCount = C_NORMALIZED_SHOT_COUNT if C_USE_SHOT_COUNT_NORMALIZED else "category"
+CorrectionTable.to_csv(f'normalization_tables/{args.discipline}_LogGamma_CDF_{shotCount}shots.csv',index=False)
+
 dfNormalized = df.copy(deep=True)
 df['State'] = "Original"
 dfNormalized[resultKey] = dfNormalized.apply(lambda row: normalizeResultCDF(row, resultKey, CorrectionTable, refCat),axis=1)
@@ -464,9 +481,11 @@ dfCompare = pd.concat([dfCompare,dfNormalized],ignore_index=True)
 fig = px.box(dfCompare,y=resultKey,x='Category',color='State',category_orders={'Category':categoryOrder})
 fig.update_traces(boxpoints=False, boxmean=True)
 fig.update_layout(title="Comparison between original results and Normalized results")
-fig.show()
+showFigure(fig)
 
-print(dfCompare[(dfCompare['State'] == "CDF Normalized") & (dfCompare['Year'] == 2023)].sort_values('Result',ascending=False).head(n=25))
-dfCompare[(dfCompare['State'] == "CDF Normalized") & (dfCompare['Year'] == 2023)].sort_values('Result',ascending=False).to_csv('BOA 2023 Normalized.csv',index=False)
+year = args.year if args.year else df['Year'].max()
+dfRanking = dfCompare[(dfCompare['State'] == "CDF Normalized") & (dfCompare['Year'] == year)].sort_values(resultKey,ascending=False)
+print(dfRanking.head(n=25))
+dfRanking.to_csv(f'BOA {year} {args.discipline} Normalized.csv',index=False)
 #fig = px.box(dfCompare,y=resultKey,x='Category',facet_col='State')
 #fig.show()
